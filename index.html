@@ -556,25 +556,20 @@
   }
 
   async function loadAllStats() {
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (!apiUrl) return;
-
     try {
-      const res = await fetch(`${apiUrl}?action=getCustomers`);
-      const data = await res.json();
-      if (data.error) return;
+      const data = await apiGetCustomers();
       const customers = data.customers || [];
 
       businesses.forEach(biz => {
         const bizCustomers = customers.filter(c => c.businessId === biz.id);
-        const totalEl = document.getElementById(`stat-total-${biz.id}`);
-        const calledEl = document.getElementById(`stat-called-${biz.id}`);
+        const totalEl    = document.getElementById(`stat-total-${biz.id}`);
+        const calledEl   = document.getElementById(`stat-called-${biz.id}`);
         const notCalledEl = document.getElementById(`stat-notcalled-${biz.id}`);
-        if (totalEl) totalEl.textContent = bizCustomers.length;
-        if (calledEl) calledEl.textContent = bizCustomers.filter(c => (c.callCount || 0) > 0).length;
+        if (totalEl)     totalEl.textContent = bizCustomers.length;
+        if (calledEl)    calledEl.textContent = bizCustomers.filter(c => (c.callCount || 0) > 0).length;
         if (notCalledEl) notCalledEl.textContent = bizCustomers.filter(c => (c.callCount || 0) === 0).length;
       });
-    } catch (e) {
+    } catch(e) {
       console.error('統計読み込み失敗:', e);
     }
   }
