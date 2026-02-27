@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顧客詳細 - テレアポ顧客管理</title>
+  <style>
+    :root {
+      --primary: #2563eb; --primary-hover: #1d4ed8; --success: #16a34a;
+      --warning: #f59e0b; --danger: #dc2626; --info: #0891b2;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+      --gray-900: #111827; --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    .navbar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .navbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .navbar-brand { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .navbar-brand .icon { font-size: 22px; }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-600); border-radius: 2px; }
+    .navbar-nav { display: flex; gap: 4px; list-style: none; }
+    .navbar-nav a { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; color: var(--gray-600); font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
+    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); margin-bottom: 20px; flex-wrap: wrap; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 20px; }
+
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .info-item { display: flex; flex-direction: column; }
+    .info-label { font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+    .info-value { font-size: 15px; color: var(--gray-800); }
+    .info-value a { color: var(--primary); text-decoration: none; }
+    .info-value a:hover { text-decoration: underline; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .badge-tag { background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+    .badge-legacy { background: var(--gray-100); color: var(--gray-500); }
+
+    .customer-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-100); }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+
+    /* ── 電話ボタン ── */
+    .call-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .call-action-btn {
+      flex: 1; min-width: 160px; display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 16px 20px; border-radius: var(--radius); text-decoration: none;
+      font-size: 15px; font-weight: 700; transition: background 0.15s, transform 0.1s;
+      border: none; cursor: pointer;
+    }
+    .call-action-btn:active { transform: scale(0.97); }
+    .call-action-btn.phone { background: var(--success); color: #fff; }
+    .call-action-btn.phone:hover { background: #15803d; }
+    .call-action-btn.zoom { background: #2D8CFF; color: #fff; }
+    .call-action-btn.zoom:hover { background: #1a6fd4; }
+    .call-action-btn .btn-icon { font-size: 24px; }
+    .call-action-btn .btn-label small { display: block; font-size: 11px; font-weight: 400; opacity: 0.85; }
+
+    /* ── 2カラム ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    /* ── 架電登録パネル（折りたたみ） ── */
+    .call-panel { border: 2px solid var(--success); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .call-panel-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; background: #f0fdf4; cursor: pointer; user-select: none;
+      transition: background 0.15s;
+    }
+    .call-panel-toggle:hover { background: #dcfce7; }
+    .call-panel-toggle h2 { font-size: 16px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 8px; }
+    .call-panel-toggle .toggle-arrow { font-size: 18px; color: #166534; transition: transform 0.2s; }
+    .call-panel-toggle.open .toggle-arrow { transform: rotate(180deg); }
+    .call-panel-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; background: #fff; }
+    .call-panel-body.open { max-height: 1200px; }
+    .call-panel-inner { padding: 20px; }
+
+    .section-label { font-size: 13px; font-weight: 700; color: var(--gray-600); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+    .tag-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .tag-btn {
+      padding: 8px 18px; border: 2px solid var(--gray-200); border-radius: 999px; background: #fff;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+      color: var(--gray-600); user-select: none;
+    }
+    .tag-btn:hover { border-color: var(--gray-400); }
+    .tag-btn.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .btn-logout { background: none; border: 1px solid var(--gray-300); border-radius: var(--radius); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--gray-600); font-weight: 500; transition: all 0.15s; }
+    .btn-logout:hover { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+    .nav-user { font-size: 13px; color: var(--gray-500); padding: 0 4px; display: flex; align-items: center; white-space: nowrap; }
+
+    .call-status-btn {
+      padding: 8px 18px; border: 2px solid var(--gray-200); border-radius: 999px; background: #fff;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+      color: var(--gray-600); user-select: none;
+    }
+    .call-status-btn:hover { border-color: var(--gray-400); }
+    .call-status-btn.selected { border-color: var(--success); background: #f0fdf4; color: #166534; font-weight: 600; }
+    .badge-call-status { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+    .timer-section { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .timer-display { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gray-800); min-width: 90px; }
+    .timer-display.active { color: var(--primary); }
+    .timer-buttons { display: flex; gap: 8px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+    .form-group label .required { color: var(--danger); margin-left: 2px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius);
+      font-size: 16px; font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-actions-inline { display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px; }
+
+    /* ── タイムライン ── */
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before { content: ''; position: absolute; left: 10px; top: 8px; bottom: 8px; width: 2px; background: var(--gray-200); }
+    .timeline-item { position: relative; padding-bottom: 20px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-dot { position: absolute; left: -22px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--gray-200); }
+    .timeline-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+    .timeline-date { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+    .timeline-body { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: var(--radius); padding: 12px; font-size: 14px; color: var(--gray-600); line-height: 1.7; }
+    .timeline-meta { font-size: 12px; color: var(--gray-400); margin-top: 6px; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── モーダル ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+    .modal-backdrop.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--gray-400); padding: 4px; line-height: 1; }
+    .modal-close:hover { color: var(--gray-700); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 0 24px 20px; display: flex; gap: 8px; justify-content: flex-end; }
+
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; }
+      .navbar-inner { position: relative; }
+      .hamburger { display: flex; }
+      .navbar-nav { display: none; position: absolute; top: 56px; left: -12px; right: -12px; background: #fff; border-bottom: 1px solid var(--gray-200); flex-direction: column; padding: 8px; box-shadow: var(--shadow-md); z-index: 101; }
+      .navbar-nav.open { display: flex; }
+      .navbar-nav a { padding: 12px 16px; font-size: 15px; }
+      .container { padding: 16px; }
+      .two-col { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .info-grid { grid-template-columns: 1fr; }
+      .call-actions { flex-direction: column; }
+      .call-action-btn { min-width: auto; padding: 18px 20px; font-size: 16px; }
+      .call-panel-body.open { max-height: 1600px; }
+      .tag-btn { padding: 10px 16px; font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="#" id="navCustomers">📋 顧客一覧</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="index.html">ホーム</a><span>›</span>
+    <a href="#" id="bcBiz">業務</a><span>›</span>
+    <span id="bcName">顧客詳細</span>
+  </div>
+
+  <div class="page-header">
+    <h1 id="pageTitle">顧客詳細</h1>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="openEditModal()">✏️ 編集</button>
+      <button class="btn btn-danger btn-sm" onclick="handleDelete()">🗑️ 削除</button>
+    </div>
+  </div>
+
+  <!-- 電話発信ボタン -->
+  <div class="call-actions" id="callActions" style="display:none;">
+    <a class="call-action-btn phone" id="telBtn" href="#">
+      <span class="btn-icon">📱</span>
+      <span class="btn-label">電話をかける<small>端末の電話アプリで発信</small></span>
+    </a>
+    <a class="call-action-btn zoom" id="zoomBtn" href="#">
+      <span class="btn-icon">💻</span>
+      <span class="btn-label">Zoom Phoneで発信<small>Zoomアプリで発信</small></span>
+    </a>
+  </div>
+
+  <!-- 架電結果登録パネル（折りたたみ） -->
+  <div class="call-panel" id="callPanel">
+    <div class="call-panel-toggle" id="callPanelToggle" onclick="toggleCallPanel()">
+      <h2>📞 架電結果を登録</h2>
+      <span class="toggle-arrow">▼</span>
+    </div>
+    <div class="call-panel-body" id="callPanelBody">
+      <div class="call-panel-inner">
+        <form id="callForm" onsubmit="return handleCallSubmit(event)">
+          <div class="timer-section">
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="timer-buttons">
+              <button type="button" class="btn btn-success btn-sm" id="timerStart" onclick="startTimer()">▶ 開始</button>
+              <button type="button" class="btn btn-outline btn-sm" id="timerStop" onclick="stopTimer()" style="display:none;">⏸ 停止</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="resetTimer()">↻ リセット</button>
+            </div>
+          </div>
+
+          <div class="section-label">📞 電話ステータス（1つ選択）</div>
+          <div class="tag-buttons" id="callStatusButtons" style="margin-bottom:16px;"></div>
+
+          <div class="section-label">🏷️ 顧客ステータスタグ（複数選択可）</div>
+          <div class="tag-buttons" id="tagButtons"></div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>架電日時</label>
+              <input type="datetime-local" id="callDate">
+            </div>
+            <div class="form-group">
+              <label>対応者<span class="required">*</span></label>
+              <select id="operatorSelect"></select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>メモ</label>
+            <textarea id="callMemo" placeholder="通話内容や次回アクションなどを記録..."></textarea>
+          </div>
+
+          <input type="hidden" id="callDuration">
+
+          <div class="form-actions-inline">
+            <button type="button" class="btn btn-outline" onclick="toggleCallPanel()">閉じる</button>
+            <button type="submit" class="btn btn-primary">💾 架電結果を登録</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- 左: 顧客情報 -->
+    <div>
+      <div class="card">
+        <div class="card-header"><h2>📋 顧客情報</h2></div>
+        <div class="card-body">
+          <div class="customer-tags" id="customerTagsDisplay"></div>
+          <div class="info-grid" id="customerInfo" style="margin-top:14px;"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>📝 備考</h2></div>
+        <div class="card-body"><p id="customerNotes" style="font-size:14px;color:var(--gray-600);white-space:pre-wrap;">-</p></div>
+      </div>
+    </div>
+    <!-- 右: 架電履歴 -->
+    <div>
+      <div class="card">
+        <div class="card-header"><h2>📞 架電履歴</h2><span style="font-size:13px;color:var(--gray-500);" id="callCountLabel">0件</span></div>
+        <div class="card-body"><div id="callHistory"><div class="empty-state"><div class="empty-icon">📭</div><p>架電履歴はありません</p></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 顧客編集モーダル -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <div class="modal-header"><h2>顧客情報の編集</h2><button class="modal-close" onclick="closeEditModal()">&times;</button></div>
+    <div class="modal-body">
+      <form id="editForm" onsubmit="return handleEdit(event)">
+        <div class="form-group"><label>会社名<span class="required">*</span></label><input type="text" name="companyName" required></div>
+        <div class="form-row">
+          <div class="form-group"><label>担当者名</label><input type="text" name="contactName"></div>
+          <div class="form-group"><label>部署・役職</label><input type="text" name="department"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>電話番号<span class="required">*</span></label><input type="tel" name="phone" required></div>
+          <div class="form-group"><label>メールアドレス</label><input type="email" name="email"></div>
+        </div>
+        <div class="form-group"><label>住所</label><input type="text" name="address"></div>
+        <div class="form-group">
+          <label>ステータスタグ</label>
+          <div class="tag-buttons" id="editTagButtons"></div>
+        </div>
+        <div class="form-group"><label>備考</label><textarea name="notes"></textarea></div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEditModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="document.getElementById('editForm').requestSubmit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 認証チェック ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+
+  function logout() {
+    if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
+  }
+
+  const CALL_STATUSES = ['不在', '即切り', '対応あり', '担当者対応', '折り返し待ち'];
+
+  let customer = null;
+  let callRecords = [];
+  let businessId = '';
+  let selectedTags = new Set();
+  let editTags = new Set();
+  let timerInterval = null;
+  let timerSeconds = 0;
+  let timerRunning = false;
+  let selectedCallStatus = '';
+
+  function getApiUrl() { return localStorage.getItem('gasApiUrl') || ''; }
+  function getParams() {
+    const p = new URLSearchParams(window.location.search);
+    return { id: p.get('id'), businessId: p.get('businessId') || '' };
+  }
+
+  function getBusinessTags() {
+    const tagsByBiz = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
+    return tagsByBiz[businessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
+  }
+
+  // ── 設定同期 ──
+  async function loadAppSettings() {
+    const apiUrl = getApiUrl();
+    if (apiUrl) {
+      try {
+        const res = await fetch(`${apiUrl}?action=getSettings`);
+        const data = await res.json();
+        if (data.settings) {
+          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
+          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
+          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
+        }
+      } catch(e) {}
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (auth) {
+      const el = document.getElementById('navUserInfo');
+      if (el) el.textContent = `👤 ${auth.name}`;
+      if (auth.role !== 'admin') { const li = document.getElementById('navSettingsLi'); if (li) li.style.display = 'none'; }
+    }
+    const params = getParams();
+    businessId = params.businessId;
+    if (!params.id) { window.location.href = 'index.html'; return; }
+    await loadAppSettings();
+    updateNavLinks();
+    populateOperators();
+    initCallDate();
+    renderCallStatusButtons();
+    loadCustomerDetail(params.id);
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navMenu').classList.toggle('open');
+    });
+  });
+
+  function updateNavLinks() {
+    const biz = encodeURIComponent(businessId);
+    document.getElementById('navCustomers').href = `customers.html?businessId=${biz}`;
+    document.getElementById('bcBiz').href = `customers.html?businessId=${biz}`;
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const b = businesses.find(x => x.id === businessId);
+    if (b) document.getElementById('bcBiz').textContent = b.name;
+  }
+
+  function initCallDate() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('callDate').value = now.toISOString().slice(0, 16);
+  }
+
+  // ════════════════════════════
+  // 顧客データ読み込み
+  // ════════════════════════════
+  async function loadCustomerDetail(id) {
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
+    showLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}?action=getCustomer&id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      customer = data.customer;
+      callRecords = data.callHistory || [];
+      renderDetail();
+      renderTagButtons();
+    } catch (e) { showToast('読み込みに失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  function renderDetail() {
+    if (!customer) return;
+    document.title = `${customer.companyName} - テレアポ顧客管理`;
+    document.getElementById('bcName').textContent = customer.companyName;
+    document.getElementById('pageTitle').textContent = customer.companyName;
+
+    const phone = String(customer.phone || '');
+    const phoneClean = phone.replace(/[-\s()]/g, '');
+
+    // タグ表示
+    const tags = (customer.tags || '').split(',').filter(Boolean);
+    document.getElementById('customerTagsDisplay').innerHTML = tags.length > 0
+      ? tags.map(t => `<span class="badge badge-tag">${esc(t.trim())}</span>`).join(' ')
+      : '<span style="font-size:13px;color:var(--gray-400);">タグなし</span>';
+
+    document.getElementById('customerInfo').innerHTML = `
+      <div class="info-item"><span class="info-label">会社名</span><span class="info-value">${esc(customer.companyName)}</span></div>
+      <div class="info-item"><span class="info-label">担当者</span><span class="info-value">${esc(customer.contactName || '-')}</span></div>
+      <div class="info-item"><span class="info-label">部署・役職</span><span class="info-value">${esc(customer.department || '-')}</span></div>
+      <div class="info-item"><span class="info-label">電話番号</span><span class="info-value"><a href="tel:${esc(phone)}">${esc(phone || '-')}</a></span></div>
+      <div class="info-item"><span class="info-label">メールアドレス</span><span class="info-value">${customer.email ? `<a href="mailto:${esc(customer.email)}">${esc(customer.email)}</a>` : '-'}</span></div>
+      <div class="info-item"><span class="info-label">住所</span><span class="info-value">${esc(customer.address || '-')}</span></div>
+      <div class="info-item"><span class="info-label">架電回数</span><span class="info-value">${customer.callCount || 0}回</span></div>
+      <div class="info-item"><span class="info-label">最終架電日</span><span class="info-value">${customer.lastCallDate ? formatDate(customer.lastCallDate) : '-'}</span></div>
+      <div class="info-item"><span class="info-label">登録日</span><span class="info-value">${formatDate(customer.createdAt)}</span></div>
+      <div class="info-item"><span class="info-label">更新日</span><span class="info-value">${formatDate(customer.updatedAt)}</span></div>`;
+
+    document.getElementById('customerNotes').textContent = customer.notes || 'メモなし';
+
+    if (phoneClean) {
+      document.getElementById('telBtn').href = `tel:${phoneClean}`;
+      document.getElementById('zoomBtn').href = `zoomphonecall://${phoneClean}`;
+      document.getElementById('callActions').style.display = '';
+    }
+
+    renderCallHistory();
+  }
+
+  // ════════════════════════════
+  // 電話ステータス
+  // ════════════════════════════
+  function renderCallStatusButtons() {
+    document.getElementById('callStatusButtons').innerHTML = CALL_STATUSES.map(s => {
+      const sel = selectedCallStatus === s ? ' selected' : '';
+      return `<button type="button" class="call-status-btn${sel}" data-status="${esc(s)}" onclick="selectCallStatus(this)">${esc(s)}</button>`;
+    }).join('');
+  }
+
+  function selectCallStatus(btn) {
+    selectedCallStatus = selectedCallStatus === btn.dataset.status ? '' : btn.dataset.status;
+    renderCallStatusButtons();
+  }
+
+  // ════════════════════════════
+  // 顧客タグ操作
+  // ════════════════════════════
+  function renderTagButtons() {
+    const availableTags = getBusinessTags();
+    const currentTags = customer ? (customer.tags || '').split(',').filter(Boolean).map(t => t.trim()) : [];
+    selectedTags = new Set(currentTags);
+
+    document.getElementById('tagButtons').innerHTML = availableTags.map(tag => {
+      const sel = selectedTags.has(tag) ? ' selected' : '';
+      return `<button type="button" class="tag-btn${sel}" data-tag="${esc(tag)}" onclick="toggleTag(this, 'selectedTags')">${esc(tag)}</button>`;
+    }).join('');
+  }
+
+  function toggleTag(btn, setName) {
+    const tagSet = setName === 'editTags' ? editTags : selectedTags;
+    const tag = btn.dataset.tag;
+    if (tagSet.has(tag)) { tagSet.delete(tag); btn.classList.remove('selected'); }
+    else { tagSet.add(tag); btn.classList.add('selected'); }
+  }
+
+  // ════════════════════════════
+  // 架電履歴
+  // ════════════════════════════
+  function renderCallHistory() {
+    const container = document.getElementById('callHistory');
+    document.getElementById('callCountLabel').textContent = `${callRecords.length}件`;
+    if (callRecords.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>架電履歴はありません</p></div>`;
+      return;
+    }
+    const sorted = [...callRecords].sort((a, b) => new Date(b.callDate) - new Date(a.callDate));
+    container.innerHTML = `<div class="timeline">${sorted.map(r => {
+      const resultBadge = r.result ? `<span class="badge badge-call-status">${esc(r.result)}</span>` : '';
+      return `<div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-header"><span class="timeline-date">${formatDateTime(r.callDate)}</span>${resultBadge}</div>
+        <div class="timeline-body">${esc(r.memo || 'メモなし')}</div>
+        <div class="timeline-meta">対応者: ${esc(r.operator || '-')} ／ 通話時間: ${r.duration || '-'}</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  // ════════════════════════════
+  // 架電登録パネル
+  // ════════════════════════════
+  function toggleCallPanel() {
+    const toggle = document.getElementById('callPanelToggle');
+    const body = document.getElementById('callPanelBody');
+    toggle.classList.toggle('open');
+    body.classList.toggle('open');
+  }
+
+  function populateOperators() {
+    const operators = JSON.parse(localStorage.getItem('operators') || '[]');
+    const sel = document.getElementById('operatorSelect');
+    const filtered = operators.filter(op => !op.businessIds || op.businessIds.length === 0 || op.businessIds.includes(businessId));
+    sel.innerHTML = '<option value="">-- 対応者を選択 --</option>' +
+      filtered.map(op => `<option value="${esc(op.name)}" data-id="${op.id}">${esc(op.name)}</option>`).join('');
+    const lastOpId = localStorage.getItem('lastOperatorId');
+    if (lastOpId) {
+      const opt = sel.querySelector(`option[data-id="${lastOpId}"]`);
+      if (opt) opt.selected = true;
+    }
+  }
+
+  // ── タイマー ──
+  function startTimer() {
+    if (timerRunning) return;
+    timerRunning = true;
+    document.getElementById('timerDisplay').classList.add('active');
+    document.getElementById('timerStart').style.display = 'none';
+    document.getElementById('timerStop').style.display = '';
+    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+  }
+  function stopTimer() {
+    timerRunning = false; clearInterval(timerInterval);
+    document.getElementById('timerDisplay').classList.remove('active');
+    document.getElementById('timerStart').style.display = '';
+    document.getElementById('timerStop').style.display = 'none';
+    document.getElementById('callDuration').value = fmtTimer(timerSeconds);
+  }
+  function resetTimer() { stopTimer(); timerSeconds = 0; updateTimerDisplay(); document.getElementById('callDuration').value = ''; }
+  function updateTimerDisplay() { document.getElementById('timerDisplay').textContent = fmtTimer(timerSeconds); }
+  function fmtTimer(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+
+  // ── 架電結果送信 ──
+  async function handleCallSubmit(event) {
+    event.preventDefault();
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
+    const sel = document.getElementById('operatorSelect');
+    if (!sel.value) { showToast('対応者を選択してください', 'error'); return false; }
+    if (timerRunning) stopTimer();
+
+    const selectedOpt = sel.selectedOptions[0];
+    if (selectedOpt && selectedOpt.dataset.id) localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
+
+    const payload = {
+      action: 'addCallRecord',
+      customerId: customer.id,
+      callDate: document.getElementById('callDate').value,
+      result: selectedCallStatus,
+      duration: document.getElementById('callDuration').value || fmtTimer(timerSeconds),
+      operator: sel.value,
+      memo: document.getElementById('callMemo').value.trim(),
+      tags: [...selectedTags].join(','),
+    };
+
+    showLoading(true);
+    try {
+      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      showToast('架電結果を登録しました', 'success');
+
+      document.getElementById('callMemo').value = '';
+      selectedCallStatus = '';
+      renderCallStatusButtons();
+      resetTimer();
+      initCallDate();
+
+      await loadCustomerDetail(customer.id);
+    } catch (e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+    return false;
+  }
+
+  // ════════════════════════════
+  // 顧客編集
+  // ════════════════════════════
+  function openEditModal() {
+    if (!customer) return;
+    const f = document.getElementById('editForm');
+    f.companyName.value = customer.companyName || '';
+    f.contactName.value = customer.contactName || '';
+    f.department.value = customer.department || '';
+    f.phone.value = customer.phone || '';
+    f.email.value = customer.email || '';
+    f.address.value = customer.address || '';
+    f.notes.value = customer.notes || '';
+
+    editTags = new Set((customer.tags || '').split(',').filter(Boolean).map(t => t.trim()));
+    const availableTags = getBusinessTags();
+    document.getElementById('editTagButtons').innerHTML = availableTags.map(tag => {
+      const sel = editTags.has(tag) ? ' selected' : '';
+      return `<button type="button" class="tag-btn${sel}" data-tag="${esc(tag)}" onclick="toggleTag(this, 'editTags')">${esc(tag)}</button>`;
+    }).join('');
+
+    document.getElementById('editModal').classList.add('show');
+  }
+  function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
+
+  async function handleEdit(event) {
+    event.preventDefault();
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
+    const f = event.target;
+    const payload = {
+      action: 'updateCustomer', id: customer.id,
+      companyName: f.companyName.value.trim(), contactName: f.contactName.value.trim(),
+      department: f.department.value.trim(), phone: f.phone.value.trim(),
+      email: f.email.value.trim(), address: f.address.value.trim(),
+      tags: [...editTags].join(','),
+      notes: f.notes.value.trim(),
+    };
+    showLoading(true);
+    try {
+      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      showToast('顧客情報を更新しました', 'success');
+      closeEditModal();
+      await loadCustomerDetail(customer.id);
+    } catch (e) { showToast('更新に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+    return false;
+  }
+
+  async function handleDelete() {
+    if (!confirm(`「${customer.companyName}」を削除しますか？\nこの操作は取り消せません。`)) return;
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
+    showLoading(true);
+    try {
+      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'deleteCustomer', id: customer.id }) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      showToast('顧客を削除しました', 'success');
+      setTimeout(() => { window.location.href = `customers.html?businessId=${encodeURIComponent(businessId)}`; }, 1000);
+    } catch (e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  // ════════════════════════════
+  // ユーティリティ
+  // ════════════════════════════
+  function formatDate(d) { if (!d) return '-'; const dt = new Date(d); if (isNaN(dt)) return d; return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
+  function formatDateTime(d) { if (!d) return '-'; const dt = new Date(d); if (isNaN(dt)) return d; return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; }
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+  document.getElementById('editModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeEditModal(); });
+</script>
+
+</body>
+</html>

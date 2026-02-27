@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - テレアポ顧客管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-logo { text-align: center; font-size: 52px; margin-bottom: 8px; }
+    .login-title { text-align: center; font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .login-subtitle { text-align: center; font-size: 13px; color: #6b7280; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 12px 14px;
+      border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 16px; font-family: inherit; outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .btn-login {
+      width: 100%; padding: 13px;
+      background: #2563eb; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+      margin-top: 8px;
+    }
+    .btn-login:hover { background: #1d4ed8; }
+    .btn-login:active { transform: scale(0.98); }
+    .btn-login:disabled { background: #93c5fd; cursor: not-allowed; }
+    .error-msg {
+      background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; margin-top: 12px; display: none;
+    }
+    .default-hint {
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: 8px; padding: 12px 14px;
+      font-size: 12px; color: #92400e;
+      margin-bottom: 20px; line-height: 1.8;
+    }
+    .default-hint strong { font-size: 13px; }
+    .default-hint code {
+      background: #fef3c7; padding: 1px 6px;
+      border-radius: 4px; font-family: monospace; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="login-logo">📞</div>
+  <div class="login-title">テレアポ顧客管理</div>
+  <div class="login-subtitle">ログインしてください</div>
+
+  <div class="default-hint" id="defaultHint">
+    <strong>🔑 初期設定アカウント（初回のみ）</strong><br>
+    ID：<code>admin</code>　パスワード：<code>admin123</code><br>
+    ログイン後、設定画面でパスワードと追加アカウントを設定してください
+  </div>
+
+  <form id="loginForm" onsubmit="return handleLogin(event)" autocomplete="on">
+    <div class="form-group">
+      <label for="loginId">ID</label>
+      <input type="text" id="loginId" name="username"
+             autocomplete="username" placeholder="IDを入力" required>
+    </div>
+    <div class="form-group">
+      <label for="loginPassword">パスワード</label>
+      <input type="password" id="loginPassword" name="password"
+             autocomplete="current-password" placeholder="パスワードを入力" required>
+    </div>
+    <button type="submit" class="btn-login" id="loginBtn">ログイン</button>
+    <div class="error-msg" id="loginError"></div>
+  </form>
+</div>
+
+<script>
+  // すでにログイン済みなら index.html へ
+  (function() {
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (auth && Date.now() < auth.expiry) {
+      location.replace('index.html');
+    }
+  })();
+
+  // パスワードハッシュ（SHA-256）
+  async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + '_teleapo_v1');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // 登録済みユーザーがいる場合は初期ヒントを非表示
+  function refreshHint() {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    if (users.length > 0) {
+      document.getElementById('defaultHint').style.display = 'none';
+    }
+  }
+  refreshHint();
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const id       = document.getElementById('loginId').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl  = document.getElementById('loginError');
+    const btn      = document.getElementById('loginBtn');
+
+    btn.textContent = '確認中...';
+    btn.disabled = true;
+    errorEl.style.display = 'none';
+
+    try {
+      const users  = JSON.parse(localStorage.getItem('users') || '[]');
+      const hashed = await hashPassword(password);
+      let user     = users.find(u => u.loginId === id && u.password === hashed);
+
+      // ユーザー未登録の場合はデフォルト管理者でログイン可
+      if (!user && users.length === 0 && id === 'admin') {
+        const defaultHash = await hashPassword('admin123');
+        if (hashed === defaultHash) {
+          user = { loginId: 'admin', name: '管理者', role: 'admin' };
+        }
+      }
+
+      if (!user) {
+        errorEl.textContent = 'IDまたはパスワードが違います';
+        errorEl.style.display = '';
+        return;
+      }
+
+      // セッション保存（30日間）
+      localStorage.setItem('authSession', JSON.stringify({
+        userId : user.loginId,
+        name   : user.name,
+        role   : user.role,
+        expiry : Date.now() + 30 * 24 * 60 * 60 * 1000
+      }));
+
+      location.href = 'index.html';
+    } finally {
+      btn.textContent = 'ログイン';
+      btn.disabled = false;
+    }
+    return false;
+  }
+
+  // GASからユーザー情報を取得してローカルに反映
+  (async function syncUsersFromGas() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (!apiUrl) return;
+    try {
+      const res  = await fetch(`${apiUrl}?action=getSettings`);
+      const data = await res.json();
+      if (data.settings && data.settings.users) {
+        localStorage.setItem('users', JSON.stringify(data.settings.users));
+        refreshHint();
+      }
+    } catch(e) {}
+  })();
+</script>
+
+</body>
+</html>

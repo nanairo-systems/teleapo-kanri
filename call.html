@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>架電登録 - テレアポ顧客管理</title>
+  <style>
+    :root {
+      --primary: #2563eb; --primary-hover: #1d4ed8; --success: #16a34a;
+      --warning: #f59e0b; --danger: #dc2626; --info: #0891b2;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+      --gray-900: #111827; --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    .navbar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .navbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .navbar-brand { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .navbar-brand .icon { font-size: 22px; }
+    .navbar-nav { display: flex; gap: 4px; list-style: none; }
+    .navbar-nav a { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; color: var(--gray-600); font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
+    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
+
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); margin-bottom: 20px; flex-wrap: wrap; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+    .page-header p { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+
+    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
+    .card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 20px; }
+
+    .customer-select-box { position: relative; }
+    .customer-search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; outline: none; transition: border-color 0.15s; }
+    .customer-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .customer-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow-md); max-height: 240px; overflow-y: auto; z-index: 10; margin-top: 4px; }
+    .customer-dropdown.show { display: block; }
+    .customer-option { padding: 10px 14px; cursor: pointer; font-size: 14px; border-bottom: 1px solid var(--gray-100); }
+    .customer-option:last-child { border-bottom: none; }
+    .customer-option:hover { background: #eff6ff; }
+    .customer-option .co-name { font-weight: 600; color: var(--gray-800); }
+    .customer-option .co-sub { font-size: 12px; color: var(--gray-500); }
+    .selected-customer { display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 12px 16px; margin-top: 8px; align-items: center; justify-content: space-between; }
+    .selected-customer.show { display: flex; }
+    .selected-customer .sc-info { display: flex; flex-direction: column; }
+    .selected-customer .sc-name { font-weight: 600; color: var(--gray-800); font-size: 15px; }
+    .selected-customer .sc-detail { font-size: 13px; color: var(--gray-500); }
+    .sc-remove { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--gray-400); padding: 4px 8px; border-radius: 4px; }
+    .sc-remove:hover { background: rgba(0,0,0,0.05); color: var(--gray-700); }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .form-group label .required { color: var(--danger); margin-left: 2px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .form-group textarea { resize: vertical; min-height: 120px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── 複数選択タグ ── */
+    .tag-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-btn {
+      padding: 8px 18px; border: 2px solid var(--gray-200); border-radius: 999px;
+      background: #fff; font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: all 0.15s; color: var(--gray-600); user-select: none;
+    }
+    .tag-btn:hover { border-color: var(--gray-400); }
+    .tag-btn.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .tag-btn.tag-first.selected { border-color: var(--success); background: #dcfce7; color: #166534; }
+    .tag-btn.tag-last.selected { border-color: var(--danger); background: #fee2e2; color: #991b1b; }
+    .selected-tags-display { margin-top: 8px; font-size: 13px; color: var(--gray-500); }
+
+    .timer-section { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .timer-display { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gray-800); min-width: 120px; }
+    .timer-display.active { color: var(--primary); }
+    .timer-buttons { display: flex; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-100); }
+    .btn-lg { padding: 12px 32px; font-size: 16px; }
+    .form-actions { display: flex; gap: 12px; justify-content: flex-end; padding-top: 8px; }
+
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; }
+      .navbar-inner { flex-wrap: wrap; height: auto; padding: 8px 0; gap: 8px; }
+      .navbar-nav { width: 100%; overflow-x: auto; }
+      .container { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .timer-section { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <ul class="navbar-nav">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="#" id="navCustomers">📋 顧客一覧</a></li>
+      <li><a href="#" class="active" id="navCall">📞 架電登録</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li><a href="settings.html">⚙️ 設定</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="index.html">ホーム</a><span>›</span>
+    <a href="#" id="bcBiz">業務</a><span>›</span>
+    <span>架電登録</span>
+  </div>
+
+  <div class="page-header">
+    <h1>📞 架電登録</h1>
+    <p>架電結果を記録します</p>
+  </div>
+
+  <form id="callForm" onsubmit="return handleSubmit(event)">
+    <!-- 顧客選択 -->
+    <div class="card">
+      <div class="card-header"><h2>👤 顧客を選択</h2></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>対象顧客<span class="required">*</span></label>
+          <div class="customer-select-box">
+            <input type="text" class="customer-search-input" id="customerSearch" placeholder="会社名・担当者名で検索..." autocomplete="off" oninput="handleCustomerSearch()" onfocus="handleCustomerSearch()">
+            <div class="customer-dropdown" id="customerDropdown"></div>
+          </div>
+          <div class="selected-customer" id="selectedCustomer">
+            <div class="sc-info"><span class="sc-name" id="scName"></span><span class="sc-detail" id="scDetail"></span></div>
+            <button type="button" class="sc-remove" onclick="clearCustomer()">&times;</button>
+          </div>
+          <input type="hidden" id="selectedCustomerId" name="customerId" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- 通話タイマー -->
+    <div class="card">
+      <div class="card-header"><h2>⏱️ 通話タイマー</h2></div>
+      <div class="card-body">
+        <div class="timer-section">
+          <div class="timer-display" id="timerDisplay">00:00</div>
+          <div class="timer-buttons">
+            <button type="button" class="btn btn-success" id="timerStart" onclick="startTimer()">▶ 開始</button>
+            <button type="button" class="btn btn-outline" id="timerStop" onclick="stopTimer()" style="display:none;">⏸ 停止</button>
+            <button type="button" class="btn btn-outline" id="timerReset" onclick="resetTimer()">↻ リセット</button>
+          </div>
+        </div>
+        <input type="hidden" id="callDuration" name="duration">
+      </div>
+    </div>
+
+    <!-- 架電結果（複数選択タグ） -->
+    <div class="card">
+      <div class="card-header"><h2>📝 架電結果</h2></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>架電結果タグ<span class="required">*</span>（複数選択可）</label>
+          <div class="tag-buttons" id="tagButtons">
+            <!-- JSで描画 -->
+          </div>
+          <div class="selected-tags-display" id="selectedTagsDisplay"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>架電日時</label>
+            <input type="datetime-local" id="callDate" name="callDate">
+          </div>
+          <div class="form-group">
+            <label>対応者<span class="required">*</span></label>
+            <select id="operatorSelect" name="operator">
+              <option value="">-- 対応者を選択 --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>メモ</label>
+          <textarea name="memo" id="callMemo" placeholder="通話内容や次回アクションなどを記録..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="#" class="btn btn-outline" id="cancelBtn">キャンセル</a>
+      <button type="submit" class="btn btn-primary btn-lg">💾 架電結果を登録</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const FIXED_LEFT = 'アポ獲得';
+  const FIXED_RIGHT = '業種不一致';
+
+  let customers = [];
+  let selectedCustomer = null;
+  let timerInterval = null;
+  let timerSeconds = 0;
+  let timerRunning = false;
+  let businessId = '';
+  let selectedTags = new Set();
+
+  function getApiUrl() { return localStorage.getItem('gasApiUrl') || ''; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const p = new URLSearchParams(window.location.search);
+    businessId = p.get('businessId') || '';
+    if (!businessId) { window.location.href = 'index.html'; return; }
+
+    updateNavLinks();
+    renderTagButtons();
+    populateOperators();
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('callDate').value = now.toISOString().slice(0, 16);
+
+    loadCustomers();
+  });
+
+  function updateNavLinks() {
+    const biz = encodeURIComponent(businessId);
+    document.getElementById('navCustomers').href = `customers.html?businessId=${biz}`;
+    document.getElementById('navCall').href = `call.html?businessId=${biz}`;
+    document.getElementById('bcBiz').href = `customers.html?businessId=${biz}`;
+    document.getElementById('cancelBtn').href = `customers.html?businessId=${biz}`;
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const b = businesses.find(x => x.id === businessId);
+    if (b) document.getElementById('bcBiz').textContent = b.name;
+  }
+
+  // ── 架電結果タグ（複数選択・業務別） ──
+  function renderTagButtons() {
+    const tagsByBiz = JSON.parse(localStorage.getItem('callResultTagsByBusiness') || '{}');
+    const middleTags = tagsByBiz[businessId] || ['担当者不在', '不在', '再架電', '資料送付', '断り'];
+    const allTags = [FIXED_LEFT, ...middleTags, FIXED_RIGHT];
+    const container = document.getElementById('tagButtons');
+
+    container.innerHTML = allTags.map((tag, i) => {
+      let cls = 'tag-btn';
+      if (i === 0) cls += ' tag-first';
+      if (i === allTags.length - 1) cls += ' tag-last';
+      return `<button type="button" class="${cls}" data-tag="${esc(tag)}" onclick="toggleTag(this)">${esc(tag)}</button>`;
+    }).join('');
+  }
+
+  function toggleTag(btn) {
+    const tag = btn.dataset.tag;
+    if (selectedTags.has(tag)) {
+      selectedTags.delete(tag);
+      btn.classList.remove('selected');
+    } else {
+      selectedTags.add(tag);
+      btn.classList.add('selected');
+    }
+    updateTagsDisplay();
+  }
+
+  function updateTagsDisplay() {
+    const display = document.getElementById('selectedTagsDisplay');
+    if (selectedTags.size === 0) {
+      display.textContent = '';
+    } else {
+      display.textContent = `選択中: ${[...selectedTags].join('、')}`;
+    }
+  }
+
+  // ── 対応者ドロップダウン ──
+  function populateOperators() {
+    const operators = JSON.parse(localStorage.getItem('operators') || '[]');
+    const sel = document.getElementById('operatorSelect');
+
+    const filtered = operators.filter(op => {
+      if (!op.businessIds || op.businessIds.length === 0) return true;
+      return op.businessIds.includes(businessId);
+    });
+
+    sel.innerHTML = '<option value="">-- 対応者を選択 --</option>' +
+      filtered.map(op => `<option value="${esc(op.name)}" data-id="${op.id}">${esc(op.name)}</option>`).join('');
+
+    const lastOpId = localStorage.getItem('lastOperatorId');
+    if (lastOpId) {
+      const opt = sel.querySelector(`option[data-id="${lastOpId}"]`);
+      if (opt) opt.selected = true;
+    }
+  }
+
+  // ── 顧客 ──
+  async function loadCustomers() {
+    const apiUrl = getApiUrl();
+    if (!apiUrl) return;
+    try {
+      const res = await fetch(`${apiUrl}?action=getCustomers`);
+      const data = await res.json();
+      customers = (data.customers || []).filter(c => c.businessId === businessId);
+      const preselect = new URLSearchParams(window.location.search).get('customerId');
+      if (preselect) { const c = customers.find(x => x.id === preselect); if (c) selectCustomer(c); }
+    } catch (e) { console.error(e); }
+  }
+
+  function handleCustomerSearch() {
+    const query = document.getElementById('customerSearch').value.toLowerCase().trim();
+    const dropdown = document.getElementById('customerDropdown');
+    if (!query || customers.length === 0) { dropdown.classList.remove('show'); return; }
+    const matches = customers.filter(c => (c.companyName || '').toLowerCase().includes(query) || (c.contactName || '').toLowerCase().includes(query)).slice(0, 20);
+    if (matches.length === 0) {
+      dropdown.innerHTML = '<div style="padding:12px;color:var(--gray-400);font-size:14px;text-align:center;">該当なし</div>';
+    } else {
+      dropdown.innerHTML = matches.map(c => `<div class="customer-option" onclick='selectCustomer(${JSON.stringify(c).replace(/'/g, "&#39;")})'><div><div class="co-name">${esc(c.companyName)}</div><div class="co-sub">${esc(c.contactName || '')} ${esc(c.phone || '')}</div></div></div>`).join('');
+    }
+    dropdown.classList.add('show');
+  }
+
+  function selectCustomer(c) {
+    selectedCustomer = c;
+    document.getElementById('selectedCustomerId').value = c.id;
+    document.getElementById('scName').textContent = c.companyName;
+    document.getElementById('scDetail').textContent = `${c.contactName || '-'} / ${c.phone || '-'}`;
+    document.getElementById('selectedCustomer').classList.add('show');
+    document.getElementById('customerSearch').style.display = 'none';
+    document.getElementById('customerDropdown').classList.remove('show');
+  }
+
+  function clearCustomer() {
+    selectedCustomer = null;
+    document.getElementById('selectedCustomerId').value = '';
+    document.getElementById('selectedCustomer').classList.remove('show');
+    document.getElementById('customerSearch').style.display = '';
+    document.getElementById('customerSearch').value = '';
+  }
+
+  // ── タイマー ──
+  function startTimer() {
+    if (timerRunning) return;
+    timerRunning = true;
+    document.getElementById('timerDisplay').classList.add('active');
+    document.getElementById('timerStart').style.display = 'none';
+    document.getElementById('timerStop').style.display = '';
+    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+  }
+  function stopTimer() {
+    timerRunning = false; clearInterval(timerInterval);
+    document.getElementById('timerDisplay').classList.remove('active');
+    document.getElementById('timerStart').style.display = '';
+    document.getElementById('timerStop').style.display = 'none';
+    document.getElementById('callDuration').value = formatTimer(timerSeconds);
+  }
+  function resetTimer() { stopTimer(); timerSeconds = 0; updateTimerDisplay(); document.getElementById('callDuration').value = ''; }
+  function updateTimerDisplay() { document.getElementById('timerDisplay').textContent = formatTimer(timerSeconds); }
+  function formatTimer(sec) { return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; }
+
+  // ── 送信 ──
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
+    if (!document.getElementById('selectedCustomerId').value) { showToast('顧客を選択してください', 'error'); return false; }
+    if (selectedTags.size === 0) { showToast('架電結果タグを1つ以上選択してください', 'error'); return false; }
+
+    const sel = document.getElementById('operatorSelect');
+    if (!sel.value) { showToast('対応者を選択してください', 'error'); return false; }
+
+    if (timerRunning) stopTimer();
+
+    const selectedOpt = sel.selectedOptions[0];
+    if (selectedOpt && selectedOpt.dataset.id) {
+      localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
+    }
+
+    const resultStr = [...selectedTags].join(',');
+
+    const payload = {
+      action: 'addCallRecord',
+      customerId: document.getElementById('selectedCustomerId').value,
+      callDate: document.getElementById('callDate').value,
+      result: resultStr,
+      duration: document.getElementById('callDuration').value || formatTimer(timerSeconds),
+      operator: sel.value,
+      memo: document.getElementById('callMemo').value.trim(),
+    };
+
+    showLoading(true);
+    try {
+      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      showToast('架電結果を登録しました', 'success');
+      setTimeout(() => {
+        window.location.href = `detail.html?id=${encodeURIComponent(payload.customerId)}&businessId=${encodeURIComponent(businessId)}`;
+      }, 1000);
+    } catch (e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+    return false;
+  }
+
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+  document.addEventListener('click', e => { if (!e.target.closest('.customer-select-box')) document.getElementById('customerDropdown').classList.remove('show'); });
+</script>
+
+</body>
+</html>

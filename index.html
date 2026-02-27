@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テレアポ顧客管理システム</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --info: #0891b2;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.05);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── ナビゲーション ── */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .navbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .navbar-brand {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-brand .icon { font-size: 22px; }
+    .navbar-nav { display: flex; gap: 4px; list-style: none; }
+    .navbar-nav a {
+      display: flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border-radius: var(--radius); text-decoration: none; color: var(--gray-600);
+      font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s;
+    }
+    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
+    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
+    .btn-logout { background: none; border: 1px solid var(--gray-300); border-radius: var(--radius); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--gray-600); font-weight: 500; transition: all 0.15s; }
+    .btn-logout:hover { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+    .nav-user { font-size: 13px; color: var(--gray-500); padding: 0 4px; display: flex; align-items: center; white-space: nowrap; }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-600); border-radius: 2px; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    /* ── ページヘッダー ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .page-header-left h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page-header-left p {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    /* ── 業務カードグリッド ── */
+    .business-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── 業務カード ── */
+    .business-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s, transform 0.15s;
+      overflow: hidden;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+    }
+    .business-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+    .business-card-banner {
+      height: 8px;
+      width: 100%;
+    }
+    .business-card-body {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .business-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+    .business-card-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 4px;
+    }
+    .business-card-desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+      flex: 1;
+    }
+    .business-card-stats {
+      display: flex;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .business-stat {
+      display: flex;
+      flex-direction: column;
+    }
+    .business-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .business-stat-label {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    /* ── 新規追加カード ── */
+    .add-card {
+      background: #fff;
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      text-decoration: none;
+      color: var(--gray-400);
+    }
+    .add-card:hover {
+      border-color: var(--primary);
+      background: #f8faff;
+      color: var(--primary);
+    }
+    .add-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 12px;
+      transition: background 0.2s;
+    }
+    .add-card:hover .add-card-icon {
+      background: #eff6ff;
+    }
+    .add-card-text {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    /* ── コンテキストメニュー ── */
+    .card-menu-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--gray-500);
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 5;
+    }
+    .business-card:hover .card-menu-btn { opacity: 1; }
+    .card-menu-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+    .card-menu {
+      display: none;
+      position: absolute;
+      top: 52px;
+      right: 16px;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      min-width: 160px;
+      z-index: 10;
+      overflow: hidden;
+    }
+    .card-menu.show { display: block; }
+    .card-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: background 0.1s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .card-menu-item:hover { background: var(--gray-50); }
+    .card-menu-item.danger { color: var(--danger); }
+    .card-menu-item.danger:hover { background: #fef2f2; }
+
+    .business-card-wrapper {
+      position: relative;
+    }
+
+    /* ── モーダル ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      z-index: 300; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 12px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0;
+    }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; font-size: 22px; cursor: pointer;
+      color: var(--gray-400); padding: 4px; line-height: 1;
+    }
+    .modal-close:hover { color: var(--gray-700); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 0 24px 20px; display: flex; gap: 8px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: var(--gray-700); margin-bottom: 4px;
+    }
+    .form-group label .required { color: var(--danger); margin-left: 2px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300);
+      border-radius: var(--radius); font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+
+    .icon-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+    .icon-option {
+      width: 44px; height: 44px; border: 2px solid var(--gray-200);
+      border-radius: var(--radius); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .icon-option:hover { border-color: var(--gray-400); background: var(--gray-50); }
+    .icon-option.selected { border-color: var(--primary); background: #eff6ff; }
+
+    .color-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+    .color-option {
+      width: 36px; height: 36px; border-radius: 50%;
+      cursor: pointer; border: 3px solid transparent;
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .color-option:hover { transform: scale(1.1); }
+    .color-option.selected { border-color: var(--gray-700); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px;
+      border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-100); }
+
+    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; }
+      .navbar-inner { position: relative; }
+      .hamburger { display: flex; }
+      .navbar-nav { display: none; position: absolute; top: 56px; left: -12px; right: -12px; background: #fff; border-bottom: 1px solid var(--gray-200); flex-direction: column; padding: 8px; box-shadow: var(--shadow-md); z-index: 101; }
+      .navbar-nav.open { display: flex; }
+      .navbar-nav a { padding: 12px 16px; font-size: 15px; }
+      .container { padding: 16px; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .business-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand">
+      <span class="icon">📞</span>テレアポ顧客管理
+    </a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html" class="active">🏠 ホーム</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>業務一覧</h1>
+      <p>管理する業務を選択してください</p>
+    </div>
+  </div>
+
+  <div class="business-grid" id="businessGrid">
+    <!-- JSで描画 -->
+  </div>
+</div>
+
+<!-- 業務追加・編集モーダル -->
+<div class="modal-backdrop" id="businessModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">新しい業務を追加</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="businessForm" onsubmit="return handleSave(event)">
+        <div class="form-group">
+          <label>業務名<span class="required">*</span></label>
+          <input type="text" name="name" id="bizName" required placeholder="例：足場の買取・販売">
+        </div>
+        <div class="form-group">
+          <label>説明</label>
+          <textarea name="description" id="bizDesc" placeholder="この業務の概要を入力..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>アイコン</label>
+          <div class="icon-picker" id="iconPicker"></div>
+        </div>
+        <div class="form-group">
+          <label>テーマカラー</label>
+          <div class="color-picker" id="colorPicker"></div>
+        </div>
+        <input type="hidden" id="editingId">
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="document.getElementById('businessForm').requestSubmit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICONS = ['🏗️','🔧','📦','🏢','🏠','💼','🚛','📞','🛠️','📋','💰','🔩','⚡','🏭','📐'];
+  const COLORS = ['#2563eb','#16a34a','#dc2626','#f59e0b','#7c3aed','#0891b2','#db2777','#ea580c','#4f46e5','#059669'];
+
+  const DEFAULT_BUSINESSES = [
+    {
+      id: 'scaffolding-trade',
+      name: '足場の買取・販売',
+      description: '足場材の買取・販売に関するテレアポ業務',
+      icon: '📦',
+      color: '#2563eb',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'scaffolding-construction',
+      name: '足場工事',
+      description: '足場工事の受注に関するテレアポ業務',
+      icon: '🏗️',
+      color: '#16a34a',
+      createdAt: new Date().toISOString()
+    }
+  ];
+
+  // ── 認証チェック ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+
+  function logout() {
+    if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
+  }
+
+  let businesses = [];
+  let selectedIcon = '📦';
+  let selectedColor = '#2563eb';
+
+  // ── 設定同期 ──
+  async function loadAppSettings() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (apiUrl) {
+      try {
+        const res = await fetch(`${apiUrl}?action=getSettings`);
+        const data = await res.json();
+        if (data.settings && data.settings.businesses && data.settings.businesses.length > 0) {
+          localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
+          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
+          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
+          return;
+        }
+      } catch(e) {}
+    }
+    if (apiUrl && businesses.length > 0) migrateSettingsToGAS();
+  }
+  async function saveAppSetting(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (apiUrl) {
+      try { await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'saveSettings',key,value}) }); } catch(e) {}
+    }
+  }
+  async function migrateSettingsToGAS() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (!apiUrl) return;
+    for (const key of ['businesses','operators','customerTagsByBusiness']) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try { const val = JSON.parse(raw); if ((Array.isArray(val) && val.length > 0) || Object.keys(val).length > 0) await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'saveSettings',key,value:val}) }); } catch(e) {}
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (auth) {
+      const el = document.getElementById('navUserInfo');
+      if (el) el.textContent = `👤 ${auth.name}`;
+      if (auth.role !== 'admin') {
+        const li = document.getElementById('navSettingsLi');
+        if (li) li.style.display = 'none';
+      }
+    }
+    loadBusinesses();
+    renderGrid();
+    await loadAppSettings();
+    loadBusinesses();
+    renderGrid();
+  });
+
+  function loadBusinesses() {
+    const saved = localStorage.getItem('businesses');
+    if (saved) {
+      businesses = JSON.parse(saved);
+    } else {
+      businesses = DEFAULT_BUSINESSES;
+      saveBusinesses();
+    }
+  }
+
+  function saveBusinesses() {
+    localStorage.setItem('businesses', JSON.stringify(businesses));
+    saveAppSetting('businesses', businesses);
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('businessGrid');
+    const cardsHtml = businesses.map(biz => `
+      <div class="business-card-wrapper">
+        <a class="business-card" href="customers.html?businessId=${encodeURIComponent(biz.id)}" data-id="${biz.id}">
+          <div class="business-card-banner" style="background:${biz.color}"></div>
+          <div class="business-card-body">
+            <div class="business-card-icon" style="background:${biz.color}15">${biz.icon}</div>
+            <div class="business-card-name">${esc(biz.name)}</div>
+            <div class="business-card-desc">${esc(biz.description || '')}</div>
+            <div class="business-card-stats">
+              <div class="business-stat">
+                <span class="business-stat-value" id="stat-total-${biz.id}">-</span>
+                <span class="business-stat-label">顧客数</span>
+              </div>
+              <div class="business-stat">
+                <span class="business-stat-value" id="stat-called-${biz.id}">-</span>
+                <span class="business-stat-label">架電済み</span>
+              </div>
+              <div class="business-stat">
+                <span class="business-stat-value" id="stat-notcalled-${biz.id}">-</span>
+                <span class="business-stat-label">未架電</span>
+              </div>
+            </div>
+          </div>
+        </a>
+        <button class="card-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${biz.id}')">⋮</button>
+        <div class="card-menu" id="menu-${biz.id}">
+          <button class="card-menu-item" onclick="editBusiness('${biz.id}')">✏️ 編集</button>
+          <button class="card-menu-item danger" onclick="deleteBusiness('${biz.id}')">🗑️ 削除</button>
+        </div>
+      </div>
+    `).join('');
+
+    const addCardHtml = `
+      <div class="add-card" onclick="openAddModal()">
+        <div class="add-card-icon">＋</div>
+        <div class="add-card-text">新しい業務を追加</div>
+      </div>
+    `;
+
+    grid.innerHTML = cardsHtml + addCardHtml;
+    loadAllStats();
+  }
+
+  async function loadAllStats() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (!apiUrl) return;
+
+    try {
+      const res = await fetch(`${apiUrl}?action=getCustomers`);
+      const data = await res.json();
+      if (data.error) return;
+      const customers = data.customers || [];
+
+      businesses.forEach(biz => {
+        const bizCustomers = customers.filter(c => c.businessId === biz.id);
+        const totalEl = document.getElementById(`stat-total-${biz.id}`);
+        const calledEl = document.getElementById(`stat-called-${biz.id}`);
+        const notCalledEl = document.getElementById(`stat-notcalled-${biz.id}`);
+        if (totalEl) totalEl.textContent = bizCustomers.length;
+        if (calledEl) calledEl.textContent = bizCustomers.filter(c => (c.callCount || 0) > 0).length;
+        if (notCalledEl) notCalledEl.textContent = bizCustomers.filter(c => (c.callCount || 0) === 0).length;
+      });
+    } catch (e) {
+      console.error('統計読み込み失敗:', e);
+    }
+  }
+
+  // ── メニュー ──
+  function toggleMenu(id) {
+    document.querySelectorAll('.card-menu').forEach(m => {
+      if (m.id !== `menu-${id}`) m.classList.remove('show');
+    });
+    document.getElementById(`menu-${id}`).classList.toggle('show');
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.card-menu-btn') && !e.target.closest('.card-menu')) {
+      document.querySelectorAll('.card-menu').forEach(m => m.classList.remove('show'));
+    }
+  });
+
+  // ── モーダル ──
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = '新しい業務を追加';
+    document.getElementById('businessForm').reset();
+    document.getElementById('editingId').value = '';
+    selectedIcon = '📦';
+    selectedColor = '#2563eb';
+    renderPickers();
+    document.getElementById('businessModal').classList.add('show');
+  }
+
+  function editBusiness(id) {
+    document.querySelectorAll('.card-menu').forEach(m => m.classList.remove('show'));
+    const biz = businesses.find(b => b.id === id);
+    if (!biz) return;
+    document.getElementById('modalTitle').textContent = '業務を編集';
+    document.getElementById('bizName').value = biz.name;
+    document.getElementById('bizDesc').value = biz.description || '';
+    document.getElementById('editingId').value = biz.id;
+    selectedIcon = biz.icon;
+    selectedColor = biz.color;
+    renderPickers();
+    document.getElementById('businessModal').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('businessModal').classList.remove('show');
+  }
+
+  function renderPickers() {
+    document.getElementById('iconPicker').innerHTML = ICONS.map(ic =>
+      `<div class="icon-option ${ic === selectedIcon ? 'selected' : ''}" onclick="selectIcon(this, '${ic}')">${ic}</div>`
+    ).join('');
+    document.getElementById('colorPicker').innerHTML = COLORS.map(c =>
+      `<div class="color-option ${c === selectedColor ? 'selected' : ''}" style="background:${c}" onclick="selectColor(this, '${c}')"></div>`
+    ).join('');
+  }
+
+  function selectIcon(el, icon) {
+    selectedIcon = icon;
+    document.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function selectColor(el, color) {
+    selectedColor = color;
+    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function handleSave(event) {
+    event.preventDefault();
+    const name = document.getElementById('bizName').value.trim();
+    const description = document.getElementById('bizDesc').value.trim();
+    const editingId = document.getElementById('editingId').value;
+
+    if (editingId) {
+      const biz = businesses.find(b => b.id === editingId);
+      if (biz) {
+        biz.name = name;
+        biz.description = description;
+        biz.icon = selectedIcon;
+        biz.color = selectedColor;
+      }
+      showToast('業務を更新しました', 'success');
+    } else {
+      const id = name.toLowerCase().replace(/[^a-z0-9\u3000-\u9fff]/g, '-').replace(/-+/g, '-') + '-' + Date.now().toString(36);
+      businesses.push({
+        id,
+        name,
+        description,
+        icon: selectedIcon,
+        color: selectedColor,
+        createdAt: new Date().toISOString()
+      });
+      showToast('業務を追加しました', 'success');
+    }
+
+    saveBusinesses();
+    renderGrid();
+    closeModal();
+    return false;
+  }
+
+  function deleteBusiness(id) {
+    document.querySelectorAll('.card-menu').forEach(m => m.classList.remove('show'));
+    const biz = businesses.find(b => b.id === id);
+    if (!biz) return;
+    if (!confirm(`「${biz.name}」を削除しますか？\nこの業務に紐づく顧客データはスプレッドシート上に残りますが、この画面からはアクセスできなくなります。`)) return;
+    businesses = businesses.filter(b => b.id !== id);
+    saveBusinesses();
+    renderGrid();
+    showToast('業務を削除しました', 'success');
+  }
+
+  // ── ユーティリティ ──
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+
+  document.getElementById('businessModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.getElementById('hamburger').addEventListener('click', () => {
+    document.getElementById('navMenu').classList.toggle('open');
+  });
+</script>
+
+</body>
+</html>

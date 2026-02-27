@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSVインポート - テレアポ顧客管理</title>
+  <style>
+    :root {
+      --primary: #2563eb; --primary-hover: #1d4ed8; --success: #16a34a;
+      --warning: #f59e0b; --danger: #dc2626; --info: #0891b2;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+      --gray-900: #111827; --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    .navbar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .navbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .navbar-brand { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .navbar-brand .icon { font-size: 22px; }
+    .navbar-nav { display: flex; gap: 4px; list-style: none; }
+    .navbar-nav a { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; color: var(--gray-600); font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
+    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
+    .btn-logout { background: none; border: 1px solid var(--gray-300); border-radius: var(--radius); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--gray-600); font-weight: 500; transition: all 0.15s; }
+    .btn-logout:hover { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+    .nav-user { font-size: 13px; color: var(--gray-500); padding: 0 4px; display: flex; align-items: center; white-space: nowrap; }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-600); border-radius: 2px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); margin-bottom: 20px; flex-wrap: wrap; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+    .page-header p { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+
+    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
+    .card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-header p { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+    .card-body { padding: 20px; }
+
+    /* ── 業務選択 ── */
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .form-group label .required { color: var(--danger); margin-left: 2px; }
+    .form-group select, .form-group input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+    .form-group select:focus, .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+    /* ── ドロップゾーン ── */
+    .drop-zone {
+      border: 2px dashed var(--gray-300); border-radius: var(--radius);
+      padding: 48px 24px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: #f8faff; }
+    .drop-zone-icon { font-size: 48px; margin-bottom: 12px; }
+    .drop-zone-text { font-size: 15px; color: var(--gray-600); margin-bottom: 4px; }
+    .drop-zone-hint { font-size: 13px; color: var(--gray-400); }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .file-selected { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); margin-top: 12px; }
+    .file-selected.show { display: flex; }
+    .file-selected .file-name { flex: 1; font-weight: 600; font-size: 14px; color: var(--gray-800); }
+    .file-selected .file-size { font-size: 12px; color: var(--gray-500); }
+    .file-remove { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--gray-400); }
+    .file-remove:hover { color: var(--danger); }
+
+    /* ── 列名ガイド ── */
+    .column-guide { overflow-x: auto; }
+    .column-guide table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .column-guide th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-weight: 600; color: var(--gray-600); border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+    .column-guide td { padding: 8px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+    .column-guide tr:last-child td { border-bottom: none; }
+    .col-required { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #fee2e2; color: #991b1b; }
+    .col-optional { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; background: var(--gray-100); color: var(--gray-500); }
+
+    .guide-note {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius);
+      padding: 12px 16px; font-size: 13px; color: #92400e; line-height: 1.7;
+    }
+    .guide-note strong { color: #78350f; }
+
+    /* ── プレビュー ── */
+    .preview-wrapper { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .preview-table th { position: sticky; top: 0; background: var(--primary); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; z-index: 1; }
+    .preview-table td { padding: 6px 10px; border-bottom: 1px solid var(--gray-100); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .preview-table tr:nth-child(even) { background: var(--gray-50); }
+    .preview-table .row-error { background: #fef2f2; }
+    .preview-table .cell-error { color: var(--danger); font-weight: 600; }
+
+    .preview-stats {
+      display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 0;
+      font-size: 14px; color: var(--gray-600);
+    }
+    .preview-stats .stat { display: flex; align-items: center; gap: 6px; }
+    .preview-stats .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .preview-stats .dot-ok { background: var(--success); }
+    .preview-stats .dot-warn { background: var(--warning); }
+    .preview-stats .dot-err { background: var(--danger); }
+
+    .mapping-info {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    }
+    .mapping-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .mapping-chip.matched { background: #dcfce7; color: #166534; }
+    .mapping-chip.missing { background: #fee2e2; color: #991b1b; }
+    .mapping-chip.extra { background: var(--gray-100); color: var(--gray-500); }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-100); }
+    .btn-lg { padding: 12px 32px; font-size: 16px; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .form-actions { display: flex; gap: 12px; justify-content: flex-end; padding-top: 8px; }
+
+    .result-banner { padding: 20px; border-radius: var(--radius); text-align: center; margin-bottom: 20px; }
+    .result-banner.success { background: #dcfce7; border: 1px solid #86efac; }
+    .result-banner.error { background: #fee2e2; border: 1px solid #fca5a5; }
+    .result-banner .result-icon { font-size: 40px; margin-bottom: 8px; }
+    .result-banner .result-text { font-size: 18px; font-weight: 700; }
+    .result-banner .result-detail { font-size: 14px; color: var(--gray-600); margin-top: 4px; }
+
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    .step-indicator { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--gray-400); }
+    .step.active { color: var(--primary); }
+    .step.done { color: var(--success); }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 2px solid var(--gray-300); }
+    .step.active .step-num { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .step.done .step-num { border-color: var(--success); background: var(--success); color: #fff; }
+    .step-line { width: 40px; height: 2px; background: var(--gray-200); margin: 0 8px; }
+    .step-line.done { background: var(--success); }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; }
+      .navbar-inner { position: relative; }
+      .hamburger { display: flex; }
+      .navbar-nav { display: none; position: absolute; top: 56px; left: -12px; right: -12px; background: #fff; border-bottom: 1px solid var(--gray-200); flex-direction: column; padding: 8px; box-shadow: var(--shadow-md); z-index: 101; }
+      .navbar-nav.open { display: flex; }
+      .navbar-nav a { padding: 12px 16px; font-size: 15px; }
+      .container { padding: 16px; }
+      .drop-zone { padding: 32px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="import.html" class="active">📥 インポート</a></li>
+      <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="index.html">ホーム</a><span>›</span><span>CSVインポート</span>
+  </div>
+
+  <div class="page-header">
+    <h1>📥 CSVインポート</h1>
+    <p>CSVファイルから顧客データを一括登録します</p>
+  </div>
+
+  <!-- ステップ表示 -->
+  <div class="step-indicator">
+    <div class="step active" id="step1"><span class="step-num">1</span>ファイル選択</div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" id="step2"><span class="step-num">2</span>プレビュー確認</div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" id="step3"><span class="step-num">3</span>インポート完了</div>
+  </div>
+
+  <!-- ステップ1: ファイル選択 -->
+  <div id="phase1">
+    <div class="card">
+      <div class="card-header"><h2>📁 インポート先の業務を選択</h2></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>業務<span class="required">*</span></label>
+          <select id="businessSelect"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>📄 CSVファイルを選択</h2></div>
+      <div class="card-body">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" accept=".csv,.tsv,.txt" id="fileInput" onchange="handleFileSelect(event)">
+          <div class="drop-zone-icon">📄</div>
+          <div class="drop-zone-text">CSVファイルをドラッグ＆ドロップ、またはクリックして選択</div>
+          <div class="drop-zone-hint">対応形式: CSV（カンマ区切り）、TSV（タブ区切り）/ UTF-8 推奨</div>
+        </div>
+        <div class="file-selected" id="fileSelected">
+          <span>📄</span>
+          <span class="file-name" id="fileName"></span>
+          <span class="file-size" id="fileSize"></span>
+          <button class="file-remove" onclick="clearFile()">&times;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 列名ガイド -->
+    <div class="card">
+      <div class="card-header">
+        <h2>📖 使い方ガイド</h2>
+        <p>CSVファイルの1行目に以下の列名を含めてください。列の順番は自由です。</p>
+      </div>
+      <div class="card-body">
+        <div class="column-guide">
+          <table>
+            <thead><tr><th>列名</th><th>必須</th><th>説明</th><th>例</th></tr></thead>
+            <tbody>
+              <tr><td><strong>会社名</strong></td><td><span class="col-required">必須</span></td><td>顧客の会社名・屋号</td><td>株式会社サンプル</td></tr>
+              <tr><td><strong>電話番号</strong></td><td><span class="col-required">必須</span></td><td>メインの電話番号</td><td>03-1234-5678</td></tr>
+              <tr><td><strong>担当者名</strong></td><td><span class="col-optional">任意</span></td><td>先方の担当者名</td><td>山田太郎</td></tr>
+              <tr><td><strong>部署役職</strong></td><td><span class="col-optional">任意</span></td><td>担当者の部署・役職</td><td>営業部 部長</td></tr>
+              <tr><td><strong>メール</strong></td><td><span class="col-optional">任意</span></td><td>メールアドレス</td><td>yamada@example.com</td></tr>
+              <tr><td><strong>住所</strong></td><td><span class="col-optional">任意</span></td><td>住所</td><td>東京都渋谷区1-2-3</td></tr>
+              <tr><td><strong>備考</strong></td><td><span class="col-optional">任意</span></td><td>メモ・備考欄</td><td>午前中が繋がりやすい</td></tr>
+              <tr><td><strong>タグ</strong></td><td><span class="col-optional">任意</span></td><td>カンマ区切りで複数タグ指定可能</td><td>見込み高,材料あり</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="guide-note" style="margin-top: 16px;">
+          <strong>💡 ポイント</strong><br>
+          ・列名は1行目に記載してください。列の<strong>順番は自由</strong>です。<br>
+          ・「会社名」と「電話番号」は必須です。未入力の行はスキップされます。<br>
+          ・認識できない列名は無視されます（エラーにはなりません）。<br>
+          ・文字コードは UTF-8 を推奨します。Shift_JIS も自動判定で対応します。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ステップ2: プレビュー -->
+  <div id="phase2" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>🔍 列マッピング結果</h2></div>
+      <div class="card-body">
+        <div class="mapping-info" id="mappingInfo"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>📊 データプレビュー</h2></div>
+      <div class="card-body">
+        <div class="preview-stats" id="previewStats"></div>
+        <div class="preview-wrapper">
+          <table class="preview-table" id="previewTable"></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="goBack()">← 戻る</button>
+      <button class="btn btn-success btn-lg" id="importBtn" onclick="executeImport()">📥 インポート実行</button>
+    </div>
+  </div>
+
+  <!-- ステップ3: 完了 -->
+  <div id="phase3" style="display:none;">
+    <div class="result-banner" id="resultBanner">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-text" id="resultText"></div>
+      <div class="result-detail" id="resultDetail"></div>
+    </div>
+    <div class="form-actions">
+      <a href="index.html" class="btn btn-outline">🏠 ホームに戻る</a>
+      <button class="btn btn-primary" onclick="resetAll()">📥 続けてインポート</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const KNOWN_COLUMNS = {
+    '会社名': 'companyName', '電話番号': 'phone', '担当者名': 'contactName',
+    '部署役職': 'department', 'メール': 'email', '住所': 'address',
+    '備考': 'notes', 'タグ': 'tags'
+  };
+  const REQUIRED_COLS = ['会社名', '電話番号'];
+
+  let parsedRows = [];
+  let columnMapping = {};
+  let validRows = [];
+
+  // ── 設定同期 ──
+  async function loadAppSettings() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (apiUrl) {
+      try {
+        const res = await fetch(`${apiUrl}?action=getSettings`);
+        const data = await res.json();
+        if (data.settings) {
+          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
+        }
+      } catch(e) {}
+    }
+  }
+
+  // ── 認証チェック ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+
+  function logout() {
+    if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (auth) {
+      const el = document.getElementById('navUserInfo');
+      if (el) el.textContent = `👤 ${auth.name}`;
+      if (auth.role !== 'admin') { const li = document.getElementById('navSettingsLi'); if (li) li.style.display = 'none'; }
+    }
+    await loadAppSettings();
+    populateBusinessSelect();
+    setupDragDrop();
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navMenu').classList.toggle('open');
+    });
+  });
+
+  function populateBusinessSelect() {
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const sel = document.getElementById('businessSelect');
+    sel.innerHTML = '<option value="">-- 業務を選択 --</option>' +
+      businesses.map(b => `<option value="${b.id}">${b.icon} ${b.name}</option>`).join('');
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('businessId')) sel.value = p.get('businessId');
+  }
+
+  function setupDragDrop() {
+    const dz = document.getElementById('dropZone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+    });
+  }
+
+  function handleFileSelect(e) { if (e.target.files.length) processFile(e.target.files[0]); }
+
+  function processFile(file) {
+    if (!file.name.match(/\.(csv|tsv|txt)$/i)) { showToast('CSV/TSVファイルを選択してください', 'error'); return; }
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatSize(file.size);
+    document.getElementById('fileSelected').classList.add('show');
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      let text = e.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      parseCSV(text, file.name.endsWith('.tsv') ? '\t' : ',');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function clearFile() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileSelected').classList.remove('show');
+    parsedRows = [];
+    columnMapping = {};
+  }
+
+  function parseCSV(text, delimiter) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { showToast('データが不足しています（ヘッダー行＋1行以上必要）', 'error'); return; }
+
+    const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
+    columnMapping = {};
+    headers.forEach((h, i) => {
+      const mapped = KNOWN_COLUMNS[h];
+      if (mapped) columnMapping[i] = { original: h, field: mapped };
+    });
+
+    parsedRows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i], delimiter);
+      const row = { _raw: cols, _errors: [] };
+      for (const [idx, map] of Object.entries(columnMapping)) {
+        row[map.field] = (cols[parseInt(idx)] || '').trim();
+      }
+      if (!row.companyName) row._errors.push('会社名が空');
+      if (!row.phone) row._errors.push('電話番号が空');
+      parsedRows.push(row);
+    }
+    showPreview(headers);
+  }
+
+  function parseCSVLine(line, delimiter) {
+    const result = []; let current = ''; let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuote) {
+        if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+        else if (ch === '"') inQuote = false;
+        else current += ch;
+      } else {
+        if (ch === '"') inQuote = true;
+        else if (ch === delimiter) { result.push(current); current = ''; }
+        else current += ch;
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
+  function showPreview(headers) {
+    if (!document.getElementById('businessSelect').value) {
+      showToast('先にインポート先の業務を選択してください', 'error'); return;
+    }
+
+    setStep(2);
+    document.getElementById('phase1').style.display = 'none';
+    document.getElementById('phase2').style.display = '';
+
+    const mappingEl = document.getElementById('mappingInfo');
+    const allKnown = Object.keys(KNOWN_COLUMNS);
+    const mappedNames = Object.values(columnMapping).map(m => m.original);
+    const unmappedHeaders = headers.filter(h => !KNOWN_COLUMNS[h]);
+
+    mappingEl.innerHTML =
+      mappedNames.map(n => `<span class="mapping-chip matched">✓ ${n}</span>`).join('') +
+      allKnown.filter(k => !mappedNames.includes(k)).map(k =>
+        `<span class="mapping-chip ${REQUIRED_COLS.includes(k) ? 'missing' : 'extra'}">✗ ${k}${REQUIRED_COLS.includes(k) ? '（必須）' : ''}</span>`
+      ).join('') +
+      unmappedHeaders.map(h => `<span class="mapping-chip extra">? ${h}（無視）</span>`).join('');
+
+    const missingReq = REQUIRED_COLS.filter(r => !mappedNames.includes(r));
+    if (missingReq.length) {
+      showToast(`必須列「${missingReq.join('」「')}」が見つかりません`, 'error');
+      document.getElementById('importBtn').disabled = true;
+    } else {
+      document.getElementById('importBtn').disabled = false;
+    }
+
+    validRows = parsedRows.filter(r => r._errors.length === 0);
+    const errorRows = parsedRows.filter(r => r._errors.length > 0);
+
+    document.getElementById('previewStats').innerHTML = `
+      <div class="stat"><span class="stat-dot dot-ok"></span>有効: ${validRows.length}件</div>
+      <div class="stat"><span class="stat-dot dot-err"></span>エラー: ${errorRows.length}件</div>
+      <div class="stat">合計: ${parsedRows.length}件</div>
+    `;
+
+    const displayCols = Object.values(columnMapping).map(m => m.original);
+    const pt = document.getElementById('previewTable');
+    const maxPreview = Math.min(parsedRows.length, 100);
+    pt.innerHTML = `<thead><tr><th>#</th><th>状態</th>${displayCols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${parsedRows.slice(0, maxPreview).map((r, i) => {
+        const hasErr = r._errors.length > 0;
+        return `<tr class="${hasErr ? 'row-error' : ''}"><td>${i + 1}</td><td>${hasErr ? '❌' : '✅'}</td>${
+          Object.values(columnMapping).map(m => {
+            const val = r[m.field] || '';
+            const isErrField = REQUIRED_COLS.includes(m.original) && !val;
+            return `<td class="${isErrField ? 'cell-error' : ''}">${esc(val || '-')}</td>`;
+          }).join('')}</tr>`;
+      }).join('')}</tbody>`;
+    if (parsedRows.length > maxPreview) {
+      pt.innerHTML += `<tfoot><tr><td colspan="${displayCols.length + 2}" style="text-align:center;padding:12px;color:var(--gray-400);">他 ${parsedRows.length - maxPreview}件（プレビュー省略）</td></tr></tfoot>`;
+    }
+  }
+
+  function goBack() {
+    setStep(1);
+    document.getElementById('phase1').style.display = '';
+    document.getElementById('phase2').style.display = 'none';
+  }
+
+  async function executeImport() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
+    if (validRows.length === 0) { showToast('インポートできるデータがありません', 'error'); return; }
+
+    const businessId = document.getElementById('businessSelect').value;
+    const customers = validRows.map(r => ({
+      businessId,
+      companyName: r.companyName || '',
+      contactName: r.contactName || '',
+      department: r.department || '',
+      phone: r.phone || '',
+      email: r.email || '',
+      address: r.address || '',
+      notes: r.notes || '',
+      tags: r.tags || '',
+    }));
+
+    showLoading(true);
+    try {
+      const BATCH_SIZE = 50;
+      let imported = 0;
+      for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+        const batch = customers.slice(i, i + BATCH_SIZE);
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'bulkImport', customers: batch })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        imported += data.imported || batch.length;
+      }
+      showResult(true, imported);
+    } catch (e) {
+      showResult(false, 0, e.message);
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function showResult(success, count, errorMsg) {
+    setStep(3);
+    document.getElementById('phase2').style.display = 'none';
+    document.getElementById('phase3').style.display = '';
+
+    const banner = document.getElementById('resultBanner');
+    banner.className = `result-banner ${success ? 'success' : 'error'}`;
+    document.getElementById('resultIcon').textContent = success ? '🎉' : '❌';
+    document.getElementById('resultText').textContent = success ? 'インポート完了！' : 'インポート失敗';
+    document.getElementById('resultDetail').textContent = success
+      ? `${count}件の顧客データをインポートしました`
+      : `エラー: ${errorMsg}`;
+  }
+
+  function resetAll() {
+    setStep(1);
+    document.getElementById('phase1').style.display = '';
+    document.getElementById('phase2').style.display = 'none';
+    document.getElementById('phase3').style.display = 'none';
+    clearFile();
+    parsedRows = []; columnMapping = {}; validRows = [];
+  }
+
+  function setStep(n) {
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById(`step${i}`);
+      el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    }
+    document.getElementById('line1').className = 'step-line' + (n > 1 ? ' done' : '');
+    document.getElementById('line2').className = 'step-line' + (n > 2 ? ' done' : '');
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+</script>
+
+</body>
+</html>

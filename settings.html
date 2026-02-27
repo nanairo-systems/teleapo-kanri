@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>設定 - テレアポ顧客管理</title>
+  <style>
+    :root {
+      --primary: #2563eb; --primary-hover: #1d4ed8; --success: #16a34a;
+      --warning: #f59e0b; --danger: #dc2626;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+      --gray-900: #111827; --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    .navbar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .navbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .navbar-brand { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .navbar-brand .icon { font-size: 22px; }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-600); border-radius: 2px; }
+    .navbar-nav { display: flex; gap: 4px; list-style: none; }
+    .navbar-nav a { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; color: var(--gray-600); font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
+    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 24px; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+    .page-header p { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+
+    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
+    .card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-header p { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+    .card-body { padding: 20px; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .form-hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; line-height: 1.5; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-100); }
+    .btn-danger-outline { background: #fff; color: var(--danger); border: 1px solid #fecaca; }
+    .btn-danger-outline:hover { background: #fef2f2; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .status-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 600; }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-ng { background: #fee2e2; color: #991b1b; }
+    .status-unknown { background: var(--gray-100); color: var(--gray-500); }
+
+    .btn-logout { background: none; border: 1px solid var(--gray-300); border-radius: var(--radius); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--gray-600); font-weight: 500; transition: all 0.15s; }
+    .btn-logout:hover { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+    .nav-user { font-size: 13px; color: var(--gray-500); padding: 0 4px; display: flex; align-items: center; white-space: nowrap; }
+
+    .list-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .list-table th { padding: 8px 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 12px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50); }
+    .list-table td { padding: 8px 12px; border-bottom: 1px solid var(--gray-100); }
+    .list-table tr:last-child td { border-bottom: none; }
+    .list-table .actions { white-space: nowrap; }
+    .list-table .actions button { margin-left: 4px; }
+    .biz-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .biz-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #eff6ff; color: var(--primary); }
+    .empty-row { text-align: center; padding: 20px; color: var(--gray-400); }
+
+    .add-inline { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+    .add-inline .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+    .add-inline .form-group label { margin-bottom: 4px; }
+    .add-inline .form-group input, .add-inline .form-group select { padding: 8px 10px; font-size: 13px; }
+
+    .tag-list { display: flex; flex-direction: column; gap: 8px; }
+    .tag-row { display: flex; align-items: center; gap: 8px; }
+    .tag-editable {
+      display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe;
+    }
+    .tag-editable input {
+      border: none; background: transparent; font-size: 13px; font-weight: 600;
+      color: var(--primary); outline: none; width: 120px; padding: 0;
+      font-family: inherit;
+    }
+    .tag-remove { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--gray-400); line-height: 1; padding: 0 2px; }
+    .tag-remove:hover { color: var(--danger); }
+    .tag-label { font-size: 11px; color: var(--gray-400); white-space: nowrap; min-width: 50px; }
+    .tag-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+    .tag-preview-title { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 4px; width: 100%; }
+    .tag-chip { padding: 5px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 2px solid #bfdbfe; background: #eff6ff; color: var(--primary); }
+
+    .setup-steps { counter-reset: step; padding: 0; list-style: none; }
+    .setup-steps li { counter-increment: step; padding: 12px 0 12px 40px; position: relative; border-bottom: 1px solid var(--gray-100); font-size: 14px; color: var(--gray-700); line-height: 1.7; }
+    .setup-steps li:last-child { border-bottom: none; }
+    .setup-steps li::before { content: counter(step); position: absolute; left: 0; top: 12px; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .setup-steps code { background: var(--gray-100); padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--gray-700); }
+
+    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; }
+      .navbar-inner { position: relative; }
+      .hamburger { display: flex; }
+      .navbar-nav { display: none; position: absolute; top: 56px; left: -12px; right: -12px; background: #fff; border-bottom: 1px solid var(--gray-200); flex-direction: column; padding: 8px; box-shadow: var(--shadow-md); z-index: 101; }
+      .navbar-nav.open { display: flex; }
+      .navbar-nav a { padding: 12px 16px; font-size: 15px; }
+      .container { padding: 16px; }
+      .add-inline { flex-direction: column; }
+      .list-table th, .list-table td { padding: 6px 8px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li><a href="settings.html" class="active">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="page-header">
+    <h1>⚙️ 設定</h1>
+    <p>システムの接続設定や各種オプションを管理します</p>
+  </div>
+
+  <!-- GAS API 接続設定 -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🔗 GAS API 接続設定</h2>
+      <p>Google Apps Script のWebアプリURLを設定します</p>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>GAS WebアプリURL</label>
+        <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxxx/exec">
+        <div class="form-hint">Google Apps Script をデプロイして取得したURLを入力してください</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="saveGasUrl()">💾 URLを保存</button>
+        <button class="btn btn-outline" onclick="testConnection()">🔍 接続テスト</button>
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="status-indicator status-unknown" id="connectionStatus">⏳ 未テスト</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 対応者マスター -->
+  <div class="card">
+    <div class="card-header">
+      <h2>👥 対応者マスター</h2>
+      <p>架電登録時にドロップダウンで選択できる対応者を管理します</p>
+    </div>
+    <div class="card-body">
+      <table class="list-table" id="operatorTable">
+        <thead><tr><th>対応者名</th><th>担当業務</th><th style="width:100px;">操作</th></tr></thead>
+        <tbody id="operatorBody"></tbody>
+      </table>
+      <div class="add-inline" id="operatorAdd">
+        <div class="form-group">
+          <label>対応者名</label>
+          <input type="text" id="newOpName" placeholder="例：山田太郎">
+        </div>
+        <div class="form-group" style="min-width:200px;">
+          <label>担当業務</label>
+          <select id="newOpBiz" multiple style="height:auto;min-height:40px;padding:6px 8px;"></select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addOperator()">＋ 追加</button>
+      </div>
+      <div class="form-hint" style="margin-top: 8px;">担当業務は Ctrl/Cmd+クリック で複数選択できます。未選択なら全業務に表示されます。</div>
+    </div>
+  </div>
+
+  <!-- 顧客ステータスタグ（業務別） -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🏷️ 顧客ステータスタグ</h2>
+      <p>業務ごとに顧客に付与するタグを管理します（顧客詳細画面で複数選択可能）</p>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>業務を選択</label>
+        <select id="tagBizSelect" onchange="onTagBizChange()"></select>
+      </div>
+
+      <div id="tagEditor" style="display:none;">
+        <div class="tag-list" id="tagList"></div>
+        <div class="tag-preview" id="tagPreview"></div>
+      </div>
+      <div id="tagPlaceholder" style="text-align:center;padding:20px;color:var(--gray-400);">
+        業務を選択してタグを編集してください
+      </div>
+    </div>
+  </div>
+
+  <!-- ユーザー管理（管理者のみ） -->
+  <div class="card">
+    <div class="card-header">
+      <h2>👤 ユーザー管理</h2>
+      <p>ログインアカウントを管理します。管理者はすべての設定を変更できます</p>
+    </div>
+    <div class="card-body">
+      <table class="list-table" id="userTable">
+        <thead><tr><th>ログインID</th><th>名前</th><th>権限</th><th style="width:120px;">操作</th></tr></thead>
+        <tbody id="userBody"></tbody>
+      </table>
+      <div class="add-inline" id="userAdd">
+        <div class="form-group">
+          <label>ログインID</label>
+          <input type="text" id="newUserId" placeholder="例：yamada" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>名前</label>
+          <input type="text" id="newUserName" placeholder="例：山田太郎" autocomplete="off">
+        </div>
+        <div class="form-group" style="min-width:130px;">
+          <label>パスワード</label>
+          <input type="password" id="newUserPassword" placeholder="パスワード" autocomplete="new-password">
+        </div>
+        <div class="form-group" style="min-width:110px;">
+          <label>権限</label>
+          <select id="newUserRole">
+            <option value="staff">👤 スタッフ</option>
+            <option value="admin">🔑 管理者</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addUser()">＋ 追加</button>
+      </div>
+      <div class="form-hint" style="margin-top:8px;">
+        ※ 管理者は設定画面の全機能にアクセスできます。スタッフは顧客管理・架電のみ利用できます。
+      </div>
+    </div>
+  </div>
+
+  <!-- セットアップガイド -->
+  <div class="card">
+    <div class="card-header"><h2>📖 セットアップガイド</h2><p>初回セットアップの手順</p></div>
+    <div class="card-body">
+      <ol class="setup-steps">
+        <li><strong>Google スプレッドシートを作成</strong><br>新しいGoogleスプレッドシートを作成します。シート <code>顧客マスタ</code> と <code>架電履歴</code> はGASが自動作成します</li>
+        <li><strong>GAS スクリプトを設定</strong><br>スプレッドシートのメニューから「拡張機能」→「Apps Script」を開き、<code>gas/code.gs</code> の内容をコピー＆ペーストします</li>
+        <li><strong>Webアプリとしてデプロイ</strong><br>Apps Script エディタで「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」を選択。アクセスできるユーザーを「全員」にしてデプロイします</li>
+        <li><strong>URLを設定</strong><br>デプロイ後に表示されるURLをコピーし、上の「GAS WebアプリURL」欄に貼り付けて保存します</li>
+        <li><strong>接続テスト</strong><br>「接続テスト」ボタンで正しく接続できるか確認します。「接続OK」と表示されれば完了です</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- データ管理 -->
+  <div class="card">
+    <div class="card-header"><h2>🗄️ データ管理</h2></div>
+    <div class="card-body">
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="exportData()">📥 データエクスポート（CSV）</button>
+        <button class="btn btn-danger-outline" onclick="clearLocalData()">🗑️ ローカル設定をリセット</button>
+      </div>
+      <div class="form-hint" style="margin-top: 8px;">※ ローカル設定のリセットはGAS URL・対応者・タグ・業務一覧などのブラウザ保存データのみ削除します。スプレッドシートのデータは影響しません。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 認証チェック（管理者のみ） ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); return; }
+    if (a.role !== 'admin') { alert('管理者のみアクセスできます'); location.replace('index.html'); }
+  })();
+
+  function logout() {
+    if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
+  }
+
+  const DEFAULT_TAGS = ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
+  const MAX_TAGS = 10;
+
+  let operators = [];
+  let customTags = [];
+  let users = [];
+
+  // ── 設定同期 ──
+  async function loadAppSettings() {
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (apiUrl) {
+      try {
+        const res = await fetch(`${apiUrl}?action=getSettings`);
+        const data = await res.json();
+        if (data.settings) {
+          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
+          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
+          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
+        }
+      } catch(e) {}
+    }
+  }
+  async function saveAppSetting(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+    const apiUrl = localStorage.getItem('gasApiUrl');
+    if (apiUrl) {
+      try { await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'saveSettings',key,value}) }); } catch(e) {}
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('gasUrl').value = localStorage.getItem('gasApiUrl') || '';
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (auth) { const el = document.getElementById('navUserInfo'); if (el) el.textContent = `👤 ${auth.name}`; }
+    await loadAppSettings();
+    loadOperators();
+    loadUsers();
+    loadTags();
+    populateBizSelect();
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navMenu').classList.toggle('open');
+    });
+  });
+
+  // ════════════════════════════════════════
+  // GAS URL
+  // ════════════════════════════════════════
+  function saveGasUrl() {
+    const url = document.getElementById('gasUrl').value.trim();
+    if (!url) { localStorage.removeItem('gasApiUrl'); showToast('URLをクリアしました', 'success'); setStatus('unknown', '⏳ 未テスト'); return; }
+    if (!url.startsWith('https://script.google.com/')) { showToast('正しいGAS URLを入力してください', 'error'); return; }
+    localStorage.setItem('gasApiUrl', url);
+    showToast('GAS URLを保存しました', 'success');
+  }
+
+  async function testConnection() {
+    const url = document.getElementById('gasUrl').value.trim();
+    if (!url) { showToast('URLを入力してください', 'error'); return; }
+    setStatus('unknown', '⏳ テスト中...');
+    showLoading(true);
+    try {
+      const res = await fetch(`${url}?action=ping`, { signal: AbortSignal.timeout(15000) });
+      const data = await res.json();
+      if (data.status === 'ok' || data.success) { setStatus('ok', '✅ 接続OK'); showToast('接続テスト成功！', 'success'); }
+      else throw new Error(data.error || 'Unknown');
+    } catch (e) { setStatus('ng', '❌ 接続失敗'); showToast('接続に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  function setStatus(type, text) { const el = document.getElementById('connectionStatus'); el.className = `status-indicator status-${type}`; el.textContent = text; }
+
+  // ════════════════════════════════════════
+  // 対応者マスター
+  // ════════════════════════════════════════
+  function loadOperators() {
+    operators = JSON.parse(localStorage.getItem('operators') || '[]');
+    renderOperators();
+  }
+
+  function saveOperators() { saveAppSetting('operators', operators); }
+
+  function populateBizSelect() {
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const sel = document.getElementById('newOpBiz');
+    sel.innerHTML = businesses.map(b => `<option value="${b.id}">${b.icon} ${b.name}</option>`).join('');
+  }
+
+  function renderOperators() {
+    const body = document.getElementById('operatorBody');
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    if (operators.length === 0) {
+      body.innerHTML = '<tr><td colspan="3" class="empty-row">対応者が登録されていません</td></tr>';
+      return;
+    }
+    body.innerHTML = operators.map((op, i) => {
+      const bizNames = (op.businessIds || []).map(bid => {
+        const b = businesses.find(x => x.id === bid);
+        return b ? `<span class="biz-chip">${b.icon} ${b.name}</span>` : '';
+      }).filter(Boolean).join('');
+      return `<tr>
+        <td><strong>${esc(op.name)}</strong></td>
+        <td><div class="biz-chips">${bizNames || '<span style="color:var(--gray-400);font-size:12px;">全業務</span>'}</div></td>
+        <td class="actions">
+          <button class="btn btn-outline btn-sm" onclick="editOperator(${i})">✏️</button>
+          <button class="btn btn-danger-outline btn-sm" onclick="deleteOperator(${i})">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function addOperator() {
+    const name = document.getElementById('newOpName').value.trim();
+    if (!name) { showToast('対応者名を入力してください', 'error'); return; }
+    const sel = document.getElementById('newOpBiz');
+    const bizIds = Array.from(sel.selectedOptions).map(o => o.value);
+    operators.push({ id: Date.now().toString(36), name, businessIds: bizIds });
+    saveOperators(); renderOperators();
+    document.getElementById('newOpName').value = '';
+    sel.selectedIndex = -1;
+    showToast(`${name} を追加しました`, 'success');
+  }
+
+  function editOperator(idx) {
+    const op = operators[idx];
+    const newName = prompt('対応者名を編集', op.name);
+    if (newName === null) return;
+    if (!newName.trim()) { showToast('名前は空にできません', 'error'); return; }
+    op.name = newName.trim();
+    saveOperators(); renderOperators();
+    showToast('対応者を更新しました', 'success');
+  }
+
+  function deleteOperator(idx) {
+    if (!confirm(`「${operators[idx].name}」を削除しますか？`)) return;
+    operators.splice(idx, 1);
+    saveOperators(); renderOperators();
+    showToast('対応者を削除しました', 'success');
+  }
+
+  // ════════════════════════════════════════
+  // 顧客ステータスタグ（業務別）
+  // ════════════════════════════════════════
+  let selectedTagBizId = '';
+
+  function loadTags() { populateTagBizSelect(); }
+
+  function populateTagBizSelect() {
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const sel = document.getElementById('tagBizSelect');
+    sel.innerHTML = '<option value="">-- 業務を選択 --</option>' +
+      businesses.map(b => `<option value="${b.id}">${b.icon} ${b.name}</option>`).join('');
+  }
+
+  function onTagBizChange() {
+    selectedTagBizId = document.getElementById('tagBizSelect').value;
+    if (selectedTagBizId) {
+      customTags = getTagsForBusiness(selectedTagBizId);
+      document.getElementById('tagEditor').style.display = '';
+      document.getElementById('tagPlaceholder').style.display = 'none';
+      renderTags();
+    } else {
+      document.getElementById('tagEditor').style.display = 'none';
+      document.getElementById('tagPlaceholder').style.display = '';
+    }
+  }
+
+  function getTagsForBusiness(bizId) {
+    const allTags = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
+    return allTags[bizId] || [...DEFAULT_TAGS];
+  }
+
+  function saveTags() {
+    if (!selectedTagBizId) return;
+    const allTags = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
+    allTags[selectedTagBizId] = customTags;
+    saveAppSetting('customerTagsByBusiness', allTags);
+    renderTagPreview();
+  }
+
+  function renderTags() {
+    const list = document.getElementById('tagList');
+    list.innerHTML = customTags.map((tag, i) => `
+      <div class="tag-row">
+        <span class="tag-label">タグ${i + 1}</span>
+        <div class="tag-editable">
+          <input type="text" value="${esc(tag)}" onchange="updateTag(${i}, this.value)" onblur="updateTag(${i}, this.value)">
+          <button class="tag-remove" onclick="removeTag(${i})">&times;</button>
+        </div>
+      </div>
+    `).join('') +
+    (customTags.length < MAX_TAGS ? `
+      <div class="tag-row">
+        <span class="tag-label"></span>
+        <button class="btn btn-outline btn-sm" onclick="addTag()">＋ タグを追加（残り${MAX_TAGS - customTags.length}）</button>
+      </div>
+    ` : '');
+    renderTagPreview();
+  }
+
+  function updateTag(idx, value) {
+    value = value.trim();
+    if (!value) { showToast('タグ名は空にできません', 'error'); renderTags(); return; }
+    customTags[idx] = value;
+    saveTags();
+  }
+
+  function addTag() {
+    if (customTags.length >= MAX_TAGS) { showToast(`カスタムタグは${MAX_TAGS}つまでです`, 'error'); return; }
+    customTags.push('新しいタグ');
+    saveTags(); renderTags();
+  }
+
+  function removeTag(idx) {
+    if (!confirm(`「${customTags[idx]}」を削除しますか？`)) return;
+    customTags.splice(idx, 1);
+    saveTags(); renderTags();
+    showToast('タグを削除しました', 'success');
+  }
+
+  function renderTagPreview() {
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const biz = businesses.find(b => b.id === selectedTagBizId);
+    const bizLabel = biz ? `${biz.icon} ${biz.name}` : '';
+    document.getElementById('tagPreview').innerHTML = `
+      <div class="tag-preview-title">顧客詳細画面でのプレビュー${bizLabel ? `（${bizLabel}）` : ''}:</div>
+      ${customTags.map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}
+    `;
+  }
+
+  // ════════════════════════════════════════
+  // ユーザー管理
+  // ════════════════════════════════════════
+  async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + '_teleapo_v1');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function loadUsers() {
+    users = JSON.parse(localStorage.getItem('users') || '[]');
+    renderUsers();
+  }
+
+  function saveUsers() { saveAppSetting('users', users); }
+
+  function renderUsers() {
+    const body = document.getElementById('userBody');
+    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (users.length === 0) {
+      body.innerHTML = '<tr><td colspan="4" class="empty-row">ユーザー未登録（初期アカウント：admin / admin123）</td></tr>';
+      return;
+    }
+    body.innerHTML = users.map((u, i) => `<tr>
+      <td><code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;">${esc(u.loginId)}</code></td>
+      <td>${esc(u.name)}</td>
+      <td>${u.role === 'admin' ? '🔑 管理者' : '👤 スタッフ'}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-sm" onclick="changePassword(${i})" title="パスワード変更">🔑</button>
+        ${u.loginId !== auth?.userId ? `<button class="btn btn-danger-outline btn-sm" onclick="deleteUser(${i})" title="削除">🗑️</button>` : '<span style="font-size:12px;color:var(--gray-400);padding:0 6px;">（自分）</span>'}
+      </td>
+    </tr>`).join('');
+  }
+
+  async function addUser() {
+    const loginId  = document.getElementById('newUserId').value.trim();
+    const name     = document.getElementById('newUserName').value.trim();
+    const password = document.getElementById('newUserPassword').value;
+    const role     = document.getElementById('newUserRole').value;
+    if (!loginId || !name || !password) { showToast('全ての項目を入力してください', 'error'); return; }
+    if (users.find(u => u.loginId === loginId)) { showToast('そのIDはすでに使用されています', 'error'); return; }
+    if (password.length < 4) { showToast('パスワードは4文字以上にしてください', 'error'); return; }
+    const hashed = await hashPassword(password);
+    users.push({ loginId, name, password: hashed, role });
+    saveUsers(); renderUsers();
+    document.getElementById('newUserId').value = '';
+    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserPassword').value = '';
+    showToast(`${name} を追加しました`, 'success');
+  }
+
+  async function changePassword(idx) {
+    const newPass = prompt(`「${users[idx].name}」の新しいパスワードを入力してください`);
+    if (newPass === null) return;
+    if (!newPass.trim() || newPass.length < 4) { showToast('パスワードは4文字以上にしてください', 'error'); return; }
+    users[idx].password = await hashPassword(newPass);
+    saveUsers();
+    showToast('パスワードを変更しました', 'success');
+  }
+
+  function deleteUser(idx) {
+    if (!confirm(`「${users[idx].name}」を削除しますか？`)) return;
+    users.splice(idx, 1);
+    saveUsers(); renderUsers();
+    showToast('ユーザーを削除しました', 'success');
+  }
+
+  // ════════════════════════════════════════
+  // データ管理
+  // ════════════════════════════════════════
+  async function exportData() {
+    const url = localStorage.getItem('gasApiUrl');
+    if (!url) { showToast('GAS URLが未設定です', 'error'); return; }
+    showLoading(true);
+    try {
+      const res = await fetch(`${url}?action=getCustomers`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const customers = data.customers || [];
+      if (customers.length === 0) { showToast('エクスポートするデータがありません', 'error'); return; }
+
+      const headers = ['ID', '業務ID', '会社名', '担当者', '部署', '電話番号', 'メール', '住所', 'タグ', '架電回数', '最終架電日', '備考', '登録日', '更新日'];
+      const rows = customers.map(c => [c.id, c.businessId, c.companyName, c.contactName, c.department, c.phone, c.email, c.address, c.tags, c.callCount, c.lastCallDate, c.notes, c.createdAt, c.updatedAt]);
+      const bom = '\uFEFF';
+      const csv = bom + [headers, ...rows].map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `顧客データ_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click(); URL.revokeObjectURL(a.href);
+      showToast('CSVをダウンロードしました', 'success');
+    } catch (e) { showToast('エクスポートに失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  function clearLocalData() {
+    if (!confirm('ローカル設定をすべてリセットしますか？\nスプレッドシートのデータには影響しません。')) return;
+    localStorage.removeItem('gasApiUrl');
+    localStorage.removeItem('operatorName');
+    localStorage.removeItem('businesses');
+    localStorage.removeItem('operators');
+    localStorage.removeItem('callResultTags');
+    localStorage.removeItem('callResultTagsByBusiness');
+    localStorage.removeItem('customerTagsByBusiness');
+    localStorage.removeItem('lastOperatorId');
+    document.getElementById('gasUrl').value = '';
+    setStatus('unknown', '⏳ 未テスト');
+    operators = []; customTags = [...DEFAULT_TAGS]; selectedTagBizId = '';
+    renderOperators(); populateBizSelect(); populateTagBizSelect();
+    document.getElementById('tagEditor').style.display = 'none';
+    document.getElementById('tagPlaceholder').style.display = '';
+    showToast('ローカル設定をリセットしました', 'success');
+  }
+
+  // ════════════════════════════════════════
+  // ユーティリティ
+  // ════════════════════════════════════════
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+</script>
+
+</body>
+</html>
