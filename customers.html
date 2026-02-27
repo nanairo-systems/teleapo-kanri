@@ -181,6 +181,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" class="active" id="navCustomers">📋 顧客一覧</a></li>
+      <li><a href="dashboard.html">📊 ダッシュボード</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -220,15 +221,15 @@
     <div class="toolbar-row">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" placeholder="会社名・担当者名・電話番号で検索..." oninput="applyFilters()">
+        <input type="text" id="searchInput" placeholder="会社名・担当者名・電話番号で検索..." oninput="saveFilterState();applyFilters()">
       </div>
-      <select class="filter-select" id="callCountFilter" onchange="applyFilters()">
+      <select class="filter-select" id="callCountFilter" onchange="saveFilterState();applyFilters()">
         <option value="">すべての架電状態</option>
         <option value="0">未架電</option>
         <option value="1-3">1〜3回</option>
         <option value="4+">4回以上</option>
       </select>
-      <select class="filter-select" id="sortSelect" onchange="applyFilters()">
+      <select class="filter-select" id="sortSelect" onchange="saveFilterState();applyFilters()">
         <option value="updated_desc">更新日（新しい順）</option>
         <option value="updated_asc">更新日（古い順）</option>
         <option value="company_asc">会社名（昇順）</option>
@@ -241,6 +242,8 @@
       <div class="filter-tags" id="filterTags">
         <span class="filter-tags-label">🏷️ タグ絞り込み:</span>
       </div>
+      <button class="btn btn-sm btn-outline" id="tagModeBtn" onclick="toggleTagMode()" style="white-space:nowrap;margin-left:auto;">OR</button>
+      <button class="btn btn-sm btn-outline" id="archiveToggle" onclick="toggleArchiveView()" style="white-space:nowrap;">📦 アーカイブ</button>
     </div>
   </div>
 
@@ -312,6 +315,8 @@
   let currentBusinessId = '';
   let currentBusiness = null;
   let activeTagFilters = new Set();
+  let tagFilterMode = 'OR';
+  let showingArchived = false;
 
   function getBusinessId() { return new URLSearchParams(window.location.search).get('businessId') || ''; }
 
@@ -321,7 +326,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    const auth = getCurrentUser();
     if (auth) {
       const el = document.getElementById('navUserInfo');
       if (el) el.textContent = `👤 ${auth.name}`;
@@ -329,6 +334,8 @@
     }
     currentBusinessId = getBusinessId();
     if (!currentBusinessId) { window.location.href = 'index.html'; return; }
+    if (!canAccessBusiness(currentBusinessId)) { alert('この業務へのアクセス権限がありません'); window.location.href = 'index.html'; return; }
+    restoreFilterState();
 
     // キャッシュから即座に表示
     const cached = localStorage.getItem(CACHE_KEY_CUSTOMERS());
@@ -397,7 +404,82 @@
     const tag = btn.dataset.tag;
     if (activeTagFilters.has(tag)) { activeTagFilters.delete(tag); btn.classList.remove('active'); }
     else { activeTagFilters.add(tag); btn.classList.add('active'); }
+    saveFilterState();
     applyFilters();
+  }
+
+  function toggleTagMode() {
+    tagFilterMode = tagFilterMode === 'OR' ? 'AND' : 'OR';
+    document.getElementById('tagModeBtn').textContent = tagFilterMode;
+    saveFilterState();
+    applyFilters();
+  }
+
+  async function toggleArchiveView() {
+    showingArchived = !showingArchived;
+    const btn = document.getElementById('archiveToggle');
+    btn.textContent = showingArchived ? '📋 通常一覧' : '📦 アーカイブ';
+    btn.style.background = showingArchived ? '#fef3c7' : '';
+    showLoading(true);
+    try {
+      const data = showingArchived
+        ? await apiGetArchivedCustomers(currentBusinessId)
+        : await apiGetCustomers(currentBusinessId);
+      allCustomers = data.customers || [];
+      applyFilters();
+      updateStats(allCustomers);
+    } catch(e) { showToast('読み込み失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function archiveCustomer(id, name) {
+    if (!confirm(`「${name}」をアーカイブしますか？\n後でアーカイブ一覧から復元できます。`)) return;
+    showLoading(true);
+    try {
+      await apiArchiveCustomer(id);
+      showToast('アーカイブしました', 'success');
+      await loadCustomers();
+    } catch(e) { showToast('失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function restoreCustomer(id, name) {
+    if (!confirm(`「${name}」を復元しますか？`)) return;
+    showLoading(true);
+    try {
+      await apiRestoreCustomer(id);
+      showToast('復元しました', 'success');
+      await toggleArchiveView();
+    } catch(e) { showToast('失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  function saveFilterState() {
+    const state = {
+      search: document.getElementById('searchInput').value,
+      callFilter: document.getElementById('callCountFilter').value,
+      sort: document.getElementById('sortSelect').value,
+      tags: [...activeTagFilters],
+      tagMode: tagFilterMode,
+      scrollY: window.scrollY,
+      page: currentPage,
+    };
+    sessionStorage.setItem(`filterState_${currentBusinessId}`, JSON.stringify(state));
+  }
+
+  function restoreFilterState() {
+    const raw = sessionStorage.getItem(`filterState_${currentBusinessId}`);
+    if (!raw) return;
+    try {
+      const s = JSON.parse(raw);
+      if (s.search) document.getElementById('searchInput').value = s.search;
+      if (s.callFilter) document.getElementById('callCountFilter').value = s.callFilter;
+      if (s.sort) document.getElementById('sortSelect').value = s.sort;
+      if (s.tags) { activeTagFilters = new Set(s.tags); }
+      if (s.tagMode) { tagFilterMode = s.tagMode; document.getElementById('tagModeBtn').textContent = tagFilterMode; }
+      if (s.page) currentPage = s.page;
+      if (s.scrollY) setTimeout(() => window.scrollTo(0, s.scrollY), 100);
+    } catch(e) {}
   }
 
   async function loadCustomers() {
@@ -439,18 +521,21 @@
       let matchTags = true;
       if (activeTagFilters.size > 0) {
         const cTags = (c.tags || '').split(',').filter(Boolean).map(t => t.trim());
-        if (activeTagFilters.has('__none__') && !activeTagFilters.size === 1) {
-          matchTags = cTags.length === 0;
-        } else {
-          const realTags = new Set(activeTagFilters);
-          realTags.delete('__none__');
-          const wantNoTag = activeTagFilters.has('__none__');
-          const hasMatchingTag = [...realTags].some(ft => cTags.includes(ft));
-          const isNoTag = cTags.length === 0;
+        const realTags = new Set(activeTagFilters);
+        realTags.delete('__none__');
+        const wantNoTag = activeTagFilters.has('__none__');
+        const isNoTag = cTags.length === 0;
 
-          if (wantNoTag && realTags.size > 0) matchTags = isNoTag || hasMatchingTag;
-          else if (wantNoTag) matchTags = isNoTag;
-          else matchTags = hasMatchingTag;
+        if (realTags.size === 0 && wantNoTag) {
+          matchTags = isNoTag;
+        } else if (wantNoTag && realTags.size > 0) {
+          matchTags = isNoTag || (tagFilterMode === 'AND'
+            ? [...realTags].every(ft => cTags.includes(ft))
+            : [...realTags].some(ft => cTags.includes(ft)));
+        } else {
+          matchTags = tagFilterMode === 'AND'
+            ? [...realTags].every(ft => cTags.includes(ft))
+            : [...realTags].some(ft => cTags.includes(ft));
         }
       }
 
@@ -498,7 +583,12 @@
         <td>${tagsHtml}</td>
         <td>${c.callCount || 0}回</td>
         <td>${c.lastCallDate ? formatDate(c.lastCallDate) : '-'}</td>
-        <td><a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">📞 架電</a></td>
+        <td style="white-space:nowrap">
+          ${showingArchived
+            ? `<button class="btn btn-sm btn-outline" onclick="event.preventDefault();restoreCustomer('${c.id}','${esc(c.companyName)}')">♻️ 復元</button>`
+            : `<a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">📞 架電</a>
+               <button class="btn btn-sm btn-outline" onclick="event.preventDefault();archiveCustomer('${c.id}','${esc(c.companyName)}')" title="アーカイブ" style="padding:5px 8px;color:var(--gray-400);">📦</button>`}
+        </td>
       </tr>`;
     }).join('');
     renderPagination();
@@ -565,11 +655,17 @@
 
     if (!companyName) { showToast('会社名を入力してください', 'error'); return; }
     if (!phone)       { showToast('電話番号を入力してください', 'error'); return; }
-    if (!currentBusinessId) { showToast('業務IDが取得できません。ページを再読み込みしてください', 'error'); return; }
+    if (!currentBusinessId) { showToast('業務IDが取得できません', 'error'); return; }
 
-    console.log('[doAddCustomer] 開始 businessId:', currentBusinessId, 'company:', companyName);
     showLoading(true);
     try {
+      const dups = await apiCheckDuplicates(companyName, phone, currentBusinessId);
+      if (dups.sameBusinessDups.length > 0) {
+        const dupNames = dups.sameBusinessDups.map(d => `・${d.companyName}（${d.phone}）[${d.matchType}]`).join('\n');
+        if (!confirm(`⚠️ 同一業務内に重複候補があります:\n${dupNames}\n\nそれでも登録しますか？`)) {
+          showLoading(false); return;
+        }
+      }
       await apiAddCustomer({
         businessId:  currentBusinessId,
         companyName,
@@ -580,13 +676,11 @@
         address:     (form.address.value || '').trim(),
         notes:       (form.notes.value   || '').trim(),
       });
-      console.log('[doAddCustomer] INSERT成功');
       showToast('顧客を登録しました ✅', 'success');
       closeAddModal();
       form.reset();
       await loadCustomers();
     } catch(e) {
-      console.error('[doAddCustomer] エラー:', e);
       showToast('登録に失敗しました: ' + (e.message || String(e)), 'error');
     } finally { showLoading(false); }
   }

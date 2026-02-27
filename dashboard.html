@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダッシュボード - テレアポ顧客管理</title>
+  <style>
+    :root { --primary:#2563eb;--primary-hover:#1d4ed8;--success:#16a34a;--warning:#f59e0b;--danger:#dc2626;--info:#0891b2;--gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;--gray-900:#111827;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,0.1),0 1px 2px rgba(0,0,0,0.06);--shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.06); }
+    * { margin:0;padding:0;box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--gray-50);color:var(--gray-800);line-height:1.6;min-height:100vh; }
+    .navbar { background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow); }
+    .navbar-inner { max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px; }
+    .navbar-brand { font-size:18px;font-weight:700;color:var(--primary);text-decoration:none;display:flex;align-items:center;gap:8px; }
+    .hamburger { display:none;background:none;border:none;cursor:pointer;flex-direction:column;gap:5px;padding:4px; }
+    .hamburger span { display:block;width:22px;height:2px;background:var(--gray-600);border-radius:2px; }
+    .navbar-nav { display:flex;gap:4px;list-style:none; }
+    .navbar-nav a { display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);text-decoration:none;color:var(--gray-600);font-size:14px;font-weight:500;transition:background .15s,color .15s; }
+    .navbar-nav a:hover { background:var(--gray-100);color:var(--gray-800); }
+    .navbar-nav a.active { background:#eff6ff;color:var(--primary); }
+    .btn-logout { background:none;border:1px solid var(--gray-300);border-radius:var(--radius);padding:5px 12px;font-size:13px;cursor:pointer;color:var(--gray-600);font-weight:500; }
+    .nav-user { font-size:13px;color:var(--gray-500);padding:0 4px;display:flex;align-items:center;white-space:nowrap; }
+    .container { max-width:1200px;margin:0 auto;padding:24px; }
+    .page-header { margin-bottom:20px; }
+    .page-header h1 { font-size:22px;font-weight:700; }
+    .page-header p { font-size:13px;color:var(--gray-500); }
+    .tabs { display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--gray-200);padding-bottom:0; }
+    .tab-btn { padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gray-500);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s; }
+    .tab-btn.active { color:var(--primary);border-bottom-color:var(--primary); }
+    .tab-btn:hover { color:var(--gray-700); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .controls { display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center; }
+    .controls select,.controls input { padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:14px;background:#fff; }
+    .kpi-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px; }
+    .kpi-card { background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;text-align:center; }
+    .kpi-value { font-size:28px;font-weight:700;color:var(--gray-900); }
+    .kpi-label { font-size:12px;color:var(--gray-500);margin-top:2px; }
+    .kpi-sub { font-size:11px;color:var(--gray-400);margin-top:2px; }
+    .kpi-card.highlight { border-top:3px solid var(--danger);background:#fef2f2; }
+    .chart-row { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px; }
+    .chart-card { background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px; }
+    .chart-card h3 { font-size:14px;font-weight:600;margin-bottom:12px;color:var(--gray-700); }
+    .data-table { width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden; }
+    .data-table th { background:var(--gray-50);padding:8px 12px;text-align:left;font-weight:600;color:var(--gray-600);font-size:12px;border-bottom:1px solid var(--gray-200); }
+    .data-table td { padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700); }
+    .data-table tr:last-child td { border-bottom:none; }
+    .data-table .anomaly { background:#fef2f2;color:var(--danger);font-weight:600; }
+    .loading-overlay { display:none;position:fixed;inset:0;background:rgba(255,255,255,0.7);z-index:200;align-items:center;justify-content:center; }
+    .loading-overlay.show { display:flex; }
+    .spinner { width:40px;height:40px;border:4px solid var(--gray-200);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .toast-container { position:fixed;top:70px;right:24px;z-index:400;display:flex;flex-direction:column;gap:8px; }
+    .toast { background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-md);font-size:14px;display:flex;align-items:center;gap:8px;animation:slideIn .3s ease;max-width:360px; }
+    .toast.error { border-left:4px solid var(--danger); }
+    @keyframes slideIn { from { opacity:0;transform:translateX(40px); } to { opacity:1;transform:translateX(0); } }
+    @media(max-width:768px) {
+      .navbar { padding:0 12px; } .hamburger { display:flex; }
+      .navbar-nav { display:none;position:absolute;top:56px;left:-12px;right:-12px;background:#fff;border-bottom:1px solid var(--gray-200);flex-direction:column;padding:8px;box-shadow:var(--shadow-md);z-index:101; }
+      .navbar-nav.open { display:flex; } .chart-row { grid-template-columns:1fr; } .container { padding:16px; } .kpi-grid { grid-template-columns:repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="dashboard.html" class="active">📊 ダッシュボード</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="page-header">
+    <h1>📊 ダッシュボード</h1>
+    <p>架電実績の集計・分析</p>
+  </div>
+
+  <div class="controls">
+    <label>期間：</label>
+    <input type="date" id="dateFrom">
+    <span>〜</span>
+    <input type="date" id="dateTo">
+    <select id="bizFilter"><option value="">全業務</option></select>
+    <select id="opFilter"><option value="">全担当者</option></select>
+    <button class="tab-btn" onclick="loadDashboard()" style="background:var(--primary);color:#fff;border-radius:var(--radius);border:none;padding:8px 16px;">更新</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('overview')">📋 全体</button>
+    <button class="tab-btn" onclick="switchTab('personal')">👤 個人別</button>
+    <button class="tab-btn" onclick="switchTab('business')">🏢 業務別</button>
+  </div>
+
+  <!-- 全体タブ -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="kpi-grid" id="kpiOverview"></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>日別架電数</h3><canvas id="chartDailyOverview"></canvas></div>
+      <div class="chart-card"><h3>結果タグ内訳</h3><canvas id="chartResultTags"></canvas></div>
+    </div>
+    <h3 style="margin:16px 0 8px;font-size:15px;">担当者別 実績テーブル</h3>
+    <table class="data-table" id="tableOperators">
+      <thead><tr><th>担当者</th><th>架電数</th><th>通話数</th><th>アポ数</th><th>通話率</th><th>アポ率</th><th>平均差</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 個人別タブ -->
+  <div class="tab-panel" id="tab-personal">
+    <div class="kpi-grid" id="kpiPersonal"></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>日別推移</h3><canvas id="chartDailyPersonal"></canvas></div>
+      <div class="chart-card"><h3>業務別内訳</h3><canvas id="chartBizPersonal"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>結果タグ内訳</h3><canvas id="chartTagPersonal"></canvas></div>
+      <div class="chart-card"><h3>顧客タグ傾向</h3><canvas id="chartCustTagPersonal"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 業務別タブ -->
+  <div class="tab-panel" id="tab-business">
+    <div class="kpi-grid" id="kpiBusiness"></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>担当者比較</h3><canvas id="chartOpBusiness"></canvas></div>
+      <div class="chart-card"><h3>結果タグ傾向</h3><canvas id="chartTagBusiness"></canvas></div>
+    </div>
+    <h3 style="margin:16px 0 8px;font-size:15px;">進捗テーブル</h3>
+    <table class="data-table" id="tableBizProgress">
+      <thead><tr><th>業務</th><th>総顧客</th><th>架電済</th><th>未架電</th><th>アポ数</th><th>進捗率</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
+<script>
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+  function logout() { if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; } }
+
+  const CONNECT_RESULTS = ['対応あり','担当者対応','折り返し待ち'];
+  const APPO_TAGS = ['アポ済み','アポ獲得'];
+  let dashData = { customers:[], calls:[], operators:[], businesses:[] };
+  let charts = {};
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', b.textContent.includes(
+      id === 'overview' ? '全体' : id === 'personal' ? '個人' : '業務')));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${id}`));
+  }
+
+  function destroyCharts() {
+    Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+    charts = {};
+  }
+
+  function getFilteredCalls() {
+    let calls = dashData.calls;
+    const biz = document.getElementById('bizFilter').value;
+    const op = document.getElementById('opFilter').value;
+    if (biz) {
+      const bizCustIds = new Set(dashData.customers.filter(c => c.businessId === biz).map(c => c.id));
+      calls = calls.filter(c => bizCustIds.has(c.customerId));
+    }
+    if (op) calls = calls.filter(c => c.operator === op);
+    return calls;
+  }
+
+  function getFilteredCustomers() {
+    const biz = document.getElementById('bizFilter').value;
+    return biz ? dashData.customers.filter(c => c.businessId === biz) : dashData.customers;
+  }
+
+  function pct(a, b) { return b === 0 ? '0%' : (a / b * 100).toFixed(1) + '%'; }
+
+  function isConnect(result) { return CONNECT_RESULTS.some(r => (result || '').includes(r)); }
+  function isAppo(result) { return APPO_TAGS.some(r => (result || '').includes(r)); }
+
+  function renderOverview() {
+    const calls = getFilteredCalls();
+    const total = calls.length;
+    const connected = calls.filter(c => isConnect(c.result)).length;
+    const appos = calls.filter(c => isAppo(c.result)).length;
+    const customers = getFilteredCustomers();
+    const calledCust = customers.filter(c => c.callCount > 0).length;
+
+    document.getElementById('kpiOverview').innerHTML = [
+      kpi('架電数', total, ''),
+      kpi('通話数', connected, pct(connected, total)),
+      kpi('アポ数', appos, pct(appos, total)),
+      kpi('顧客数', customers.length, `架電済 ${calledCust}`),
+    ].join('');
+
+    const daily = groupByDate(calls);
+    charts.dailyOverview = lineChart('chartDailyOverview', Object.keys(daily), Object.values(daily), '架電数');
+
+    const tagCounts = {};
+    calls.forEach(c => { const r = c.result || '未設定'; tagCounts[r] = (tagCounts[r] || 0) + 1; });
+    charts.resultTags = pieChart('chartResultTags', Object.keys(tagCounts), Object.values(tagCounts));
+
+    const opMap = {};
+    calls.forEach(c => {
+      const op = c.operator || '未設定';
+      if (!opMap[op]) opMap[op] = { total:0, connect:0, appo:0 };
+      opMap[op].total++;
+      if (isConnect(c.result)) opMap[op].connect++;
+      if (isAppo(c.result)) opMap[op].appo++;
+    });
+    const avgRate = total > 0 ? (Object.values(opMap).reduce((s, o) => s + o.connect, 0) / total) : 0;
+
+    const tbody = document.querySelector('#tableOperators tbody');
+    tbody.innerHTML = Object.entries(opMap).sort((a,b) => b[1].total - a[1].total).map(([name, d]) => {
+      const cRate = d.total > 0 ? d.connect / d.total : 0;
+      const aRate = d.total > 0 ? d.appo / d.total : 0;
+      const diff = ((cRate - avgRate) * 100).toFixed(1);
+      const anomaly = Math.abs(parseFloat(diff)) > 20;
+      return `<tr class="${anomaly ? 'anomaly' : ''}">
+        <td>${esc(name)}</td><td>${d.total}</td><td>${d.connect}</td><td>${d.appo}</td>
+        <td>${(cRate*100).toFixed(1)}%</td><td>${(aRate*100).toFixed(1)}%</td>
+        <td>${diff > 0 ? '+' : ''}${diff}%</td></tr>`;
+    }).join('');
+  }
+
+  function renderPersonal() {
+    const op = document.getElementById('opFilter').value;
+    const calls = dashData.calls.filter(c => !op || c.operator === op);
+    const total = calls.length;
+    const connected = calls.filter(c => isConnect(c.result)).length;
+    const appos = calls.filter(c => isAppo(c.result)).length;
+
+    const allTotal = dashData.calls.length;
+    const allConnRate = allTotal > 0 ? dashData.calls.filter(c => isConnect(c.result)).length / allTotal : 0;
+    const myConnRate = total > 0 ? connected / total : 0;
+    const diff = ((myConnRate - allConnRate) * 100).toFixed(1);
+
+    document.getElementById('kpiPersonal').innerHTML = [
+      kpi('架電数', total, ''),
+      kpi('通話数', connected, pct(connected, total)),
+      kpi('アポ数', appos, pct(appos, total)),
+      kpi('平均差', `${diff > 0 ? '+' : ''}${diff}%`, '通話率', Math.abs(parseFloat(diff)) > 20),
+    ].join('');
+
+    const daily = groupByDate(calls);
+    charts.dailyPersonal = lineChart('chartDailyPersonal', Object.keys(daily), Object.values(daily), '架電数');
+
+    const bizMap = {};
+    const custMap = {};
+    calls.forEach(c => { custMap[c.customerId] = true; });
+    dashData.customers.forEach(cu => {
+      if (!custMap[cu.id]) return;
+      const bName = dashData.businesses.find(b => b.id === cu.businessId)?.name || cu.businessId;
+      bizMap[bName] = (bizMap[bName] || 0) + 1;
+    });
+    if (Object.keys(bizMap).length > 0) {
+      charts.bizPersonal = pieChart('chartBizPersonal', Object.keys(bizMap), Object.values(bizMap));
+    }
+
+    const tagCounts = {};
+    calls.forEach(c => { const r = c.result || '未設定'; tagCounts[r] = (tagCounts[r] || 0) + 1; });
+    charts.tagPersonal = pieChart('chartTagPersonal', Object.keys(tagCounts), Object.values(tagCounts));
+
+    const custTagCounts = {};
+    dashData.customers.filter(cu => custMap[cu.id]).forEach(cu => {
+      (cu.tags || '').split(',').filter(Boolean).forEach(t => { custTagCounts[t.trim()] = (custTagCounts[t.trim()] || 0) + 1; });
+    });
+    if (Object.keys(custTagCounts).length > 0) {
+      charts.custTagPersonal = pieChart('chartCustTagPersonal', Object.keys(custTagCounts), Object.values(custTagCounts));
+    }
+  }
+
+  function renderBusiness() {
+    const biz = document.getElementById('bizFilter').value;
+    const customers = getFilteredCustomers();
+    const calls = getFilteredCalls();
+    const total = calls.length;
+    const connected = calls.filter(c => isConnect(c.result)).length;
+    const appos = calls.filter(c => isAppo(c.result)).length;
+    const calledCust = customers.filter(c => c.callCount > 0).length;
+
+    document.getElementById('kpiBusiness').innerHTML = [
+      kpi('総顧客', customers.length, ''),
+      kpi('架電済', calledCust, pct(calledCust, customers.length)),
+      kpi('架電数', total, ''),
+      kpi('アポ数', appos, pct(appos, total)),
+    ].join('');
+
+    const opMap = {};
+    calls.forEach(c => { const op = c.operator || '未設定'; opMap[op] = (opMap[op] || 0) + 1; });
+    charts.opBusiness = barChart('chartOpBusiness', Object.keys(opMap), Object.values(opMap), '架電数');
+
+    const tagCounts = {};
+    calls.forEach(c => { const r = c.result || '未設定'; tagCounts[r] = (tagCounts[r] || 0) + 1; });
+    charts.tagBusiness = pieChart('chartTagBusiness', Object.keys(tagCounts), Object.values(tagCounts));
+
+    const tbody = document.querySelector('#tableBizProgress tbody');
+    const bizGroups = {};
+    dashData.businesses.forEach(b => { bizGroups[b.id] = { name: b.name, total: 0, called: 0, uncalled: 0, appo: 0 }; });
+    dashData.customers.forEach(cu => {
+      if (!bizGroups[cu.businessId]) return;
+      bizGroups[cu.businessId].total++;
+      if (cu.callCount > 0) bizGroups[cu.businessId].called++;
+      else bizGroups[cu.businessId].uncalled++;
+    });
+    dashData.calls.forEach(c => {
+      if (!isAppo(c.result)) return;
+      const cu = dashData.customers.find(x => x.id === c.customerId);
+      if (cu && bizGroups[cu.businessId]) bizGroups[cu.businessId].appo++;
+    });
+    tbody.innerHTML = Object.values(bizGroups).map(g =>
+      `<tr><td>${esc(g.name)}</td><td>${g.total}</td><td>${g.called}</td><td>${g.uncalled}</td><td>${g.appo}</td><td>${pct(g.called, g.total)}</td></tr>`
+    ).join('');
+  }
+
+  function kpi(label, value, sub, highlight) {
+    return `<div class="kpi-card${highlight ? ' highlight' : ''}"><div class="kpi-value">${value}</div><div class="kpi-label">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
+  }
+
+  function groupByDate(calls) {
+    const map = {};
+    calls.forEach(c => { const d = (c.callDate || '').slice(0, 10); if (d) map[d] = (map[d] || 0) + 1; });
+    const sorted = Object.keys(map).sort();
+    const out = {};
+    sorted.forEach(k => out[k] = map[k]);
+    return out;
+  }
+
+  const PALETTE = ['#2563eb','#16a34a','#dc2626','#f59e0b','#7c3aed','#0891b2','#db2777','#ea580c','#4f46e5','#059669','#64748b','#a3a3a3'];
+
+  function lineChart(canvasId, labels, data, label) {
+    return new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels, datasets: [{ label, data, borderColor: PALETTE[0], backgroundColor: PALETTE[0]+'20', tension: 0.3, fill: true }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  function barChart(canvasId, labels, data, label) {
+    return new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: { labels, datasets: [{ label, data, backgroundColor: PALETTE.slice(0, labels.length) }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  function pieChart(canvasId, labels, data) {
+    return new Chart(document.getElementById(canvasId), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: PALETTE.slice(0, labels.length) }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+    });
+  }
+
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+
+  async function loadDashboard() {
+    showLoading(true);
+    destroyCharts();
+    try {
+      const from = document.getElementById('dateFrom').value;
+      const to = document.getElementById('dateTo').value;
+      const toEnd = to ? to + 'T23:59:59' : undefined;
+      dashData = await apiGetDashboardData(from || undefined, toEnd);
+      renderOverview();
+      renderPersonal();
+      renderBusiness();
+    } catch(e) {
+      console.error('ダッシュボード読み込み失敗:', e);
+    } finally { showLoading(false); }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = getCurrentUser();
+    if (auth) {
+      const el = document.getElementById('navUserInfo');
+      if (el) el.textContent = `👤 ${auth.name}`;
+      if (auth.role !== 'admin') { const li = document.getElementById('navSettingsLi'); if (li) li.style.display = 'none'; }
+    }
+
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 30);
+    document.getElementById('dateFrom').value = weekAgo.toISOString().slice(0, 10);
+    document.getElementById('dateTo').value = today.toISOString().slice(0, 10);
+
+    await syncSettingsFromSupabase();
+
+    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const bizSel = document.getElementById('bizFilter');
+    businesses.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; bizSel.appendChild(o); });
+
+    const operators = JSON.parse(localStorage.getItem('operators') || '[]');
+    const opSel = document.getElementById('opFilter');
+    operators.forEach(op => { const o = document.createElement('option'); o.value = op.name; o.textContent = op.name; opSel.appendChild(o); });
+
+    await loadDashboard();
+
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navMenu').classList.toggle('open');
+    });
+  });
+</script>
+
+</body>
+</html>

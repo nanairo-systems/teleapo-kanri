@@ -144,6 +144,7 @@
     <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="dashboard.html">📊 ダッシュボード</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li><a href="settings.html" class="active">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -236,7 +237,7 @@
     </div>
     <div class="card-body">
       <table class="list-table" id="userTable">
-        <thead><tr><th>ログインID</th><th>名前</th><th>権限</th><th style="width:120px;">操作</th></tr></thead>
+        <thead><tr><th>ログインID</th><th>名前</th><th>権限</th><th>許可業務</th><th style="width:120px;">操作</th></tr></thead>
         <tbody id="userBody"></tbody>
       </table>
       <div class="add-inline" id="userAdd">
@@ -526,19 +527,45 @@
   function renderUsers() {
     const body = document.getElementById('userBody');
     const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    const allBiz = JSON.parse(localStorage.getItem('businesses') || '[]');
     if (users.length === 0) {
-      body.innerHTML = '<tr><td colspan="4" class="empty-row">ユーザー未登録（初期アカウント：admin / admin123）</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="empty-row">ユーザー未登録（初期アカウント：admin / admin123）</td></tr>';
       return;
     }
-    body.innerHTML = users.map((u, i) => `<tr>
+    body.innerHTML = users.map((u, i) => {
+      const allowed = u.allowedBusinesses || [];
+      const bizNames = u.role === 'admin' ? '<em style="color:var(--gray-400)">全業務</em>'
+        : allowed.length === 0 ? '<em style="color:var(--gray-400)">全業務</em>'
+        : allowed.map(bid => { const b = allBiz.find(x => x.id === bid); return b ? esc(b.name) : bid; }).join(', ');
+      return `<tr>
       <td><code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;">${esc(u.loginId)}</code></td>
       <td>${esc(u.name)}</td>
       <td>${u.role === 'admin' ? '🔑 管理者' : '👤 スタッフ'}</td>
+      <td style="font-size:12px;max-width:200px;">${bizNames}${u.role !== 'admin' ? ` <button class="btn btn-outline btn-sm" onclick="editAllowedBiz(${i})" style="padding:2px 6px;font-size:11px;">変更</button>` : ''}</td>
       <td class="actions">
         <button class="btn btn-outline btn-sm" onclick="changePassword(${i})" title="パスワード変更">🔑</button>
         ${u.loginId !== auth?.userId ? `<button class="btn btn-danger-outline btn-sm" onclick="deleteUser(${i})" title="削除">🗑️</button>` : '<span style="font-size:12px;color:var(--gray-400);padding:0 6px;">（自分）</span>'}
       </td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
+  }
+
+  function editAllowedBiz(idx) {
+    const u = users[idx];
+    const allBiz = JSON.parse(localStorage.getItem('businesses') || '[]');
+    const current = u.allowedBusinesses || [];
+    const choices = allBiz.map(b => `${current.includes(b.id) ? '✅' : '⬜'} ${b.name}`).join('\n');
+    const input = prompt(`「${u.name}」の許可業務を番号で入力\n（カンマ区切り、空=全業務）\n\n` +
+      allBiz.map((b, i) => `${i+1}. ${b.name} ${current.includes(b.id) ? '✅' : ''}`).join('\n'));
+    if (input === null) return;
+    if (input.trim() === '') {
+      u.allowedBusinesses = [];
+    } else {
+      const nums = input.split(/[,、\s]+/).map(n => parseInt(n)).filter(n => !isNaN(n) && n >= 1 && n <= allBiz.length);
+      u.allowedBusinesses = nums.map(n => allBiz[n-1].id);
+    }
+    saveUsers(); renderUsers();
+    showToast('許可業務を更新しました', 'success');
   }
 
   async function addUser() {

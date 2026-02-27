@@ -378,6 +378,7 @@
     <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html" class="active">🏠 ホーム</a></li>
+      <li id="navDashboardLi"><a href="dashboard.html">📊 ダッシュボード</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -431,7 +432,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-primary" onclick="document.getElementById('businessForm').requestSubmit()">保存</button>
+      <button class="btn btn-primary" onclick="handleSave(event)">保存</button>
     </div>
   </div>
 </div>
@@ -480,13 +481,13 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
+    const auth = getCurrentUser();
     if (auth) {
       const el = document.getElementById('navUserInfo');
       if (el) el.textContent = `👤 ${auth.name}`;
       if (auth.role !== 'admin') {
-        const li = document.getElementById('navSettingsLi');
-        if (li) li.style.display = 'none';
+        const sLi = document.getElementById('navSettingsLi');
+        if (sLi) sLi.style.display = 'none';
       }
     }
     loadBusinesses();
@@ -495,6 +496,13 @@
     loadBusinesses();
     renderGrid();
   });
+
+  function getVisibleBusinesses() {
+    const allowed = getUserAllowedBusinesses();
+    if (allowed === null) return businesses;
+    if (allowed.length === 0) return businesses;
+    return businesses.filter(b => allowed.includes(b.id));
+  }
 
   function loadBusinesses() {
     const saved = localStorage.getItem('businesses');
@@ -513,7 +521,10 @@
 
   function renderGrid() {
     const grid = document.getElementById('businessGrid');
-    const cardsHtml = businesses.map(biz => `
+    const visibleBiz = getVisibleBusinesses();
+    const auth = getCurrentUser();
+    const isAdmin = auth && auth.role === 'admin';
+    const cardsHtml = visibleBiz.map(biz => `
       <div class="business-card-wrapper">
         <a class="business-card" href="customers.html?businessId=${encodeURIComponent(biz.id)}" data-id="${biz.id}">
           <div class="business-card-banner" style="background:${biz.color}"></div>
@@ -537,20 +548,19 @@
             </div>
           </div>
         </a>
-        <button class="card-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${biz.id}')">⋮</button>
+        ${isAdmin ? `<button class="card-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${biz.id}')">⋮</button>
         <div class="card-menu" id="menu-${biz.id}">
           <button class="card-menu-item" onclick="editBusiness('${biz.id}')">✏️ 編集</button>
           <button class="card-menu-item danger" onclick="deleteBusiness('${biz.id}')">🗑️ 削除</button>
-        </div>
+        </div>` : ''}
       </div>
     `).join('');
 
-    const addCardHtml = `
+    const addCardHtml = isAdmin ? `
       <div class="add-card" onclick="openAddModal()">
         <div class="add-card-icon">＋</div>
         <div class="add-card-text">新しい業務を追加</div>
-      </div>
-    `;
+      </div>` : '';
 
     grid.innerHTML = cardsHtml + addCardHtml;
     loadAllStats();
@@ -561,7 +571,7 @@
       const data = await apiGetCustomers();
       const customers = data.customers || [];
 
-      businesses.forEach(biz => {
+      getVisibleBusinesses().forEach(biz => {
         const bizCustomers = customers.filter(c => c.businessId === biz.id);
         const totalEl    = document.getElementById(`stat-total-${biz.id}`);
         const calledEl   = document.getElementById(`stat-called-${biz.id}`);
@@ -672,15 +682,31 @@
     return false;
   }
 
-  function deleteBusiness(id) {
+  async function deleteBusiness(id) {
     document.querySelectorAll('.card-menu').forEach(m => m.classList.remove('show'));
     const biz = businesses.find(b => b.id === id);
     if (!biz) return;
-    if (!confirm(`「${biz.name}」を削除しますか？\nこの業務に紐づく顧客データはスプレッドシート上に残りますが、この画面からはアクセスできなくなります。`)) return;
-    businesses = businesses.filter(b => b.id !== id);
-    saveBusinesses();
-    renderGrid();
-    showToast('業務を削除しました', 'success');
+
+    let custCount = 0;
+    try {
+      const res = await apiGetCustomers(id);
+      custCount = res.customers.length;
+    } catch(e) {}
+
+    const msg = custCount > 0
+      ? `「${biz.name}」を削除しますか？\n\n⚠️ この業務には顧客が ${custCount}件 あります。\n顧客はアーカイブに移動され、後で復元できます。`
+      : `「${biz.name}」を削除しますか？`;
+    if (!confirm(msg)) return;
+
+    try {
+      if (custCount > 0) await apiArchiveByBusiness(id);
+      businesses = businesses.filter(b => b.id !== id);
+      saveBusinesses();
+      renderGrid();
+      showToast(`業務を削除しました${custCount > 0 ? `（${custCount}件をアーカイブ）` : ''}`, 'success');
+    } catch(e) {
+      showToast('削除に失敗しました: ' + e.message, 'error');
+    }
   }
 
   // ── ユーティリティ ──

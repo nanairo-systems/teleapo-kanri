@@ -208,6 +208,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" id="navCustomers">📋 顧客一覧</a></li>
+      <li><a href="dashboard.html">📊 ダッシュボード</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -227,12 +228,17 @@
   </div>
 
   <div class="page-header">
-    <h1 id="pageTitle">顧客詳細</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="btn btn-outline btn-sm" onclick="goBackToList()">← 戻る</button>
+      <h1 id="pageTitle">顧客詳細</h1>
+    </div>
     <div class="header-actions">
       <button class="btn btn-outline" onclick="openEditModal()">✏️ 編集</button>
+      <button class="btn btn-outline btn-sm" onclick="handleArchive()" title="アーカイブ">📦 アーカイブ</button>
       <button class="btn btn-danger btn-sm" onclick="handleDelete()">🗑️ 削除</button>
     </div>
   </div>
+  <div id="crossBizDups" style="display:none;margin-bottom:16px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;"></div>
 
   <!-- 電話発信ボタン -->
   <div class="call-actions" id="callActions" style="display:none;">
@@ -416,6 +422,7 @@
       callRecords = customerData.callHistory || [];
       renderDetail();
       renderTagButtons();
+      loadCrossBusinessDuplicates();
     } catch(e) { showToast('読み込みに失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
 
@@ -684,6 +691,41 @@
       setTimeout(() => { window.location.href = `customers.html?businessId=${encodeURIComponent(businessId)}`; }, 1000);
     } catch(e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
+  }
+
+  // ════════════════════════════
+  // 戻る・アーカイブ・他業務重複
+  // ════════════════════════════
+  function goBackToList() {
+    window.location.href = `customers.html?businessId=${encodeURIComponent(businessId)}`;
+  }
+
+  async function handleArchive() {
+    if (!customer) return;
+    if (!confirm(`「${customer.companyName}」をアーカイブしますか？\nアーカイブ一覧から復元できます。`)) return;
+    showLoading(true);
+    try {
+      await apiArchiveCustomer(customer.id);
+      showToast('アーカイブしました', 'success');
+      setTimeout(() => goBackToList(), 1000);
+    } catch(e) { showToast('失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function loadCrossBusinessDuplicates() {
+    if (!customer) return;
+    try {
+      const dups = await apiGetCrossBusinessDuplicates(customer.companyName, customer.phone, customer.id);
+      if (dups.length === 0) return;
+      const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+      const el = document.getElementById('crossBizDups');
+      el.style.display = '';
+      el.innerHTML = `<strong>⚠️ 他業務にも存在:</strong><br>` +
+        dups.map(d => {
+          const biz = businesses.find(b => b.id === d.businessId);
+          return `・${biz ? biz.name : d.businessId} / ${esc(d.companyName)} / 架電${d.callCount}回 ${d.lastCallDate ? '/ 最終 ' + formatDate(d.lastCallDate) : ''}`;
+        }).join('<br>');
+    } catch(e) {}
   }
 
   // ════════════════════════════
