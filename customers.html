@@ -577,7 +577,10 @@
       showToast('顧客を登録しました', 'success');
       closeAddModal();
       await loadCustomers();
-    } catch(e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    } catch(e) {
+      console.error('[handleAddCustomer] error:', e);
+      showToast('登録に失敗しました: ' + (e.message || String(e)), 'error');
+    }
     finally { showLoading(false); }
     return false;
   }

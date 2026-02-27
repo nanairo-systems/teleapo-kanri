@@ -72,7 +72,7 @@ async function apiGetCustomer(id) {
 }
 
 async function apiAddCustomer(payload) {
-  const { data, error } = await _sb.from('customers').insert({
+  const row = {
     business_id:  payload.businessId  || '',
     company_name: payload.companyName || '',
     contact_name: payload.contactName || '',
@@ -83,9 +83,14 @@ async function apiAddCustomer(payload) {
     tags:         payload.tags        || '',
     call_count:   0,
     notes:        payload.notes       || '',
-  }).select('id').single();
-  if (error) throw new Error(error.message);
-  return { success: true, id: data.id };
+  };
+  console.log('[apiAddCustomer] INSERT row:', row);
+  const { error } = await _sb.from('customers').insert(row);
+  if (error) {
+    console.error('[apiAddCustomer] Supabase error:', error);
+    throw new Error(error.message || JSON.stringify(error));
+  }
+  return { success: true };
 }
 
 async function apiUpdateCustomer(payload) {
@@ -119,15 +124,18 @@ async function apiUpdateCustomerTags(customerId, tags) {
 // 架電履歴操作
 // ════════════════════════════════════════
 async function apiAddCallRecord(payload) {
-  const { data, error } = await _sb.from('call_history').insert({
+  const { error } = await _sb.from('call_history').insert({
     customer_id: payload.customerId,
     call_date:   payload.callDate || new Date().toISOString(),
     result:      payload.result   || '',
     duration:    payload.duration || '',
     operator:    payload.operator || '',
     memo:        payload.memo     || '',
-  }).select('id').single();
-  if (error) throw new Error(error.message);
+  });
+  if (error) {
+    console.error('[apiAddCallRecord] Supabase error:', error);
+    throw new Error(error.message || JSON.stringify(error));
+  }
 
   const { data: cur } = await _sb.from('customers').select('call_count').eq('id', payload.customerId).single();
   const newCount = ((cur?.call_count) || 0) + 1;
@@ -140,7 +148,7 @@ async function apiAddCallRecord(payload) {
     await apiUpdateCustomerTags(payload.customerId, payload.tags);
   }
 
-  return { success: true, id: data.id };
+  return { success: true };
 }
 
 // ════════════════════════════════════════

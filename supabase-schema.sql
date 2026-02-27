@@ -50,6 +50,12 @@ ALTER TABLE customers    DISABLE ROW LEVEL SECURITY;
 ALTER TABLE call_history DISABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings DISABLE ROW LEVEL SECURITY;
 
+-- ── anon / authenticated ロールへの権限付与 ──
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON customers    TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON call_history TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON app_settings TO anon, authenticated;
+
 -- ── インデックス（検索の高速化） ──
 CREATE INDEX idx_customers_business_id  ON customers(business_id);
 CREATE INDEX idx_customers_updated_at   ON customers(updated_at DESC);
