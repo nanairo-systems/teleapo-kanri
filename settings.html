@@ -160,20 +160,17 @@
     <p>システムの接続設定や各種オプションを管理します</p>
   </div>
 
-  <!-- GAS API 接続設定 -->
+  <!-- Supabase 接続設定 -->
   <div class="card">
     <div class="card-header">
-      <h2>🔗 GAS API 接続設定</h2>
-      <p>Google Apps Script のWebアプリURLを設定します</p>
+      <h2>🔗 Supabase 接続設定</h2>
+      <p>データベース（Supabase）との接続状態を確認できます</p>
     </div>
     <div class="card-body">
-      <div class="form-group">
-        <label>GAS WebアプリURL</label>
-        <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxxx/exec">
-        <div class="form-hint">Google Apps Script をデプロイして取得したURLを入力してください</div>
+      <div class="form-hint" style="margin-bottom:12px;">
+        接続先：<strong>ruyiqlgqzjotrcxxlprt.supabase.co</strong>
       </div>
       <div class="btn-group">
-        <button class="btn btn-primary" onclick="saveGasUrl()">💾 URLを保存</button>
         <button class="btn btn-outline" onclick="testConnection()">🔍 接続テスト</button>
       </div>
       <div style="margin-top: 12px;">
@@ -274,11 +271,9 @@
     <div class="card-header"><h2>📖 セットアップガイド</h2><p>初回セットアップの手順</p></div>
     <div class="card-body">
       <ol class="setup-steps">
-        <li><strong>Google スプレッドシートを作成</strong><br>新しいGoogleスプレッドシートを作成します。シート <code>顧客マスタ</code> と <code>架電履歴</code> はGASが自動作成します</li>
-        <li><strong>GAS スクリプトを設定</strong><br>スプレッドシートのメニューから「拡張機能」→「Apps Script」を開き、<code>gas/code.gs</code> の内容をコピー＆ペーストします</li>
-        <li><strong>Webアプリとしてデプロイ</strong><br>Apps Script エディタで「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」を選択。アクセスできるユーザーを「全員」にしてデプロイします</li>
-        <li><strong>URLを設定</strong><br>デプロイ後に表示されるURLをコピーし、上の「GAS WebアプリURL」欄に貼り付けて保存します</li>
-        <li><strong>接続テスト</strong><br>「接続テスト」ボタンで正しく接続できるか確認します。「接続OK」と表示されれば完了です</li>
+        <li><strong>Supabaseでプロジェクトを作成</strong><br><code>supabase.com</code> でプロジェクトを作成します</li>
+        <li><strong>テーブルを作成</strong><br>Supabase管理画面の「SQL Editor」で <code>supabase-schema.sql</code> の内容を実行します</li>
+        <li><strong>接続テスト</strong><br>「接続テスト」ボタンで「接続OK」と表示されれば完了です</li>
       </ol>
     </div>
   </div>
@@ -296,6 +291,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
 <script>
   // ── 認証チェック（管理者のみ） ──
   (function() {
@@ -315,34 +312,14 @@
   let customTags = [];
   let users = [];
 
-  // ── 設定同期 ──
-  async function loadAppSettings() {
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (apiUrl) {
-      try {
-        const res = await fetch(`${apiUrl}?action=getSettings`);
-        const data = await res.json();
-        if (data.settings) {
-          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
-          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
-          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
-        }
-      } catch(e) {}
-    }
-  }
   async function saveAppSetting(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (apiUrl) {
-      try { await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'saveSettings',key,value}) }); } catch(e) {}
-    }
+    await syncSettingToSupabase(key, value);
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('gasUrl').value = localStorage.getItem('gasApiUrl') || '';
     const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
     if (auth) { const el = document.getElementById('navUserInfo'); if (el) el.textContent = `👤 ${auth.name}`; }
-    await loadAppSettings();
+    await syncSettingsFromSupabase();
     loadOperators();
     loadUsers();
     loadTags();
@@ -353,28 +330,19 @@
   });
 
   // ════════════════════════════════════════
-  // GAS URL
+  // Supabase 接続テスト
   // ════════════════════════════════════════
-  function saveGasUrl() {
-    const url = document.getElementById('gasUrl').value.trim();
-    if (!url) { localStorage.removeItem('gasApiUrl'); showToast('URLをクリアしました', 'success'); setStatus('unknown', '⏳ 未テスト'); return; }
-    if (!url.startsWith('https://script.google.com/')) { showToast('正しいGAS URLを入力してください', 'error'); return; }
-    localStorage.setItem('gasApiUrl', url);
-    showToast('GAS URLを保存しました', 'success');
-  }
-
   async function testConnection() {
-    const url = document.getElementById('gasUrl').value.trim();
-    if (!url) { showToast('URLを入力してください', 'error'); return; }
     setStatus('unknown', '⏳ テスト中...');
     showLoading(true);
     try {
-      const res = await fetch(`${url}?action=ping`, { signal: AbortSignal.timeout(15000) });
-      const data = await res.json();
-      if (data.status === 'ok' || data.success) { setStatus('ok', '✅ 接続OK'); showToast('接続テスト成功！', 'success'); }
-      else throw new Error(data.error || 'Unknown');
-    } catch (e) { setStatus('ng', '❌ 接続失敗'); showToast('接続に失敗しました: ' + e.message, 'error'); }
-    finally { showLoading(false); }
+      await apiPing();
+      setStatus('ok', '✅ 接続OK');
+      showToast('Supabase接続テスト成功！', 'success');
+    } catch(e) {
+      setStatus('ng', '❌ 接続失敗');
+      showToast('接続に失敗しました: ' + e.message, 'error');
+    } finally { showLoading(false); }
   }
 
   function setStatus(type, text) { const el = document.getElementById('connectionStatus'); el.className = `status-indicator status-${type}`; el.textContent = text; }
@@ -609,13 +577,9 @@
   // データ管理
   // ════════════════════════════════════════
   async function exportData() {
-    const url = localStorage.getItem('gasApiUrl');
-    if (!url) { showToast('GAS URLが未設定です', 'error'); return; }
     showLoading(true);
     try {
-      const res = await fetch(`${url}?action=getCustomers`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await apiGetCustomers();
       const customers = data.customers || [];
       if (customers.length === 0) { showToast('エクスポートするデータがありません', 'error'); return; }
 
@@ -633,22 +597,15 @@
   }
 
   function clearLocalData() {
-    if (!confirm('ローカル設定をすべてリセットしますか？\nスプレッドシートのデータには影響しません。')) return;
-    localStorage.removeItem('gasApiUrl');
-    localStorage.removeItem('operatorName');
-    localStorage.removeItem('businesses');
-    localStorage.removeItem('operators');
-    localStorage.removeItem('callResultTags');
-    localStorage.removeItem('callResultTagsByBusiness');
-    localStorage.removeItem('customerTagsByBusiness');
-    localStorage.removeItem('lastOperatorId');
-    document.getElementById('gasUrl').value = '';
+    if (!confirm('ローカルキャッシュをすべてリセットしますか？\nSupabaseのデータには影響しません。')) return;
+    ['businesses','operators','callResultTags','callResultTagsByBusiness',
+     'customerTagsByBusiness','lastOperatorId','gasApiUrl'].forEach(k => localStorage.removeItem(k));
     setStatus('unknown', '⏳ 未テスト');
     operators = []; customTags = [...DEFAULT_TAGS]; selectedTagBizId = '';
     renderOperators(); populateBizSelect(); populateTagBizSelect();
     document.getElementById('tagEditor').style.display = 'none';
     document.getElementById('tagPlaceholder').style.display = '';
-    showToast('ローカル設定をリセットしました', 'success');
+    showToast('ローカルキャッシュをリセットしました', 'success');
   }
 
   // ════════════════════════════════════════

@@ -310,6 +310,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
 <script>
   const KNOWN_COLUMNS = {
     '会社名': 'companyName', '電話番号': 'phone', '担当者名': 'contactName',
@@ -322,19 +324,6 @@
   let columnMapping = {};
   let validRows = [];
 
-  // ── 設定同期 ──
-  async function loadAppSettings() {
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (apiUrl) {
-      try {
-        const res = await fetch(`${apiUrl}?action=getSettings`);
-        const data = await res.json();
-        if (data.settings) {
-          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
-        }
-      } catch(e) {}
-    }
-  }
 
   // ── 認証チェック ──
   (function() {
@@ -353,7 +342,7 @@
       if (el) el.textContent = `👤 ${auth.name}`;
       if (auth.role !== 'admin') { const li = document.getElementById('navSettingsLi'); if (li) li.style.display = 'none'; }
     }
-    await loadAppSettings();
+    await syncSettingsFromSupabase();
     populateBusinessSelect();
     setupDragDrop();
     document.getElementById('hamburger').addEventListener('click', () => {
@@ -510,8 +499,6 @@
   }
 
   async function executeImport() {
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
     if (validRows.length === 0) { showToast('インポートできるデータがありません', 'error'); return; }
 
     const businessId = document.getElementById('businessSelect').value;
@@ -519,31 +506,19 @@
       businessId,
       companyName: r.companyName || '',
       contactName: r.contactName || '',
-      department: r.department || '',
-      phone: r.phone || '',
-      email: r.email || '',
-      address: r.address || '',
-      notes: r.notes || '',
-      tags: r.tags || '',
+      department:  r.department  || '',
+      phone:       r.phone       || '',
+      email:       r.email       || '',
+      address:     r.address     || '',
+      notes:       r.notes       || '',
+      tags:        r.tags        || '',
     }));
 
     showLoading(true);
     try {
-      const BATCH_SIZE = 50;
-      let imported = 0;
-      for (let i = 0; i < customers.length; i += BATCH_SIZE) {
-        const batch = customers.slice(i, i + BATCH_SIZE);
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'bulkImport', customers: batch })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        imported += data.imported || batch.length;
-      }
-      showResult(true, imported);
-    } catch (e) {
+      const result = await apiBulkImport(customers);
+      showResult(true, result.imported || customers.length);
+    } catch(e) {
       showResult(false, 0, e.message);
     } finally {
       showLoading(false);

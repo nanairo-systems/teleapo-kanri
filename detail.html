@@ -351,6 +351,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
 <script>
   // ── 認証チェック ──
   (function() {
@@ -374,7 +376,6 @@
   let timerRunning = false;
   let selectedCallStatus = '';
 
-  function getApiUrl() { return localStorage.getItem('gasApiUrl') || ''; }
   function getParams() {
     const p = new URLSearchParams(window.location.search);
     return { id: p.get('id'), businessId: p.get('businessId') || '' };
@@ -401,29 +402,15 @@
     initCallDate();
     renderCallStatusButtons();
 
-    // 設定と顧客詳細を同時取得
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
+    // 設定と顧客詳細を同時取得（Supabase）
     showLoading(true);
     try {
-      const [settingsRes, customerRes] = await Promise.all([
-        fetch(`${apiUrl}?action=getSettings`),
-        fetch(`${apiUrl}?action=getCustomer&id=${encodeURIComponent(params.id)}`)
+      const [, customerData] = await Promise.all([
+        syncSettingsFromSupabase(),
+        apiGetCustomer(params.id)
       ]);
-      const [settingsData, customerData] = await Promise.all([
-        settingsRes.json(),
-        customerRes.json()
-      ]);
-
-      if (settingsData.settings) {
-        if (settingsData.settings.businesses) localStorage.setItem('businesses', JSON.stringify(settingsData.settings.businesses));
-        if (settingsData.settings.operators) localStorage.setItem('operators', JSON.stringify(settingsData.settings.operators));
-        if (settingsData.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(settingsData.settings.customerTagsByBusiness));
-        updateNavLinks();
-        populateOperators();
-      }
-
-      if (customerData.error) throw new Error(customerData.error);
+      updateNavLinks();
+      populateOperators();
       customer = customerData.customer;
       callRecords = customerData.callHistory || [];
       renderDetail();
@@ -455,18 +442,14 @@
   // 顧客データ読み込み
   // ════════════════════════════
   async function loadCustomerDetail(id) {
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
     showLoading(true);
     try {
-      const res = await fetch(`${apiUrl}?action=getCustomer&id=${encodeURIComponent(id)}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await apiGetCustomer(id);
       customer = data.customer;
       callRecords = data.callHistory || [];
       renderDetail();
       renderTagButtons();
-    } catch (e) { showToast('読み込みに失敗しました: ' + e.message, 'error'); }
+    } catch(e) { showToast('読み込みに失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
   }
 
@@ -621,32 +604,25 @@
     const selectedOpt = sel.selectedOptions[0];
     if (selectedOpt && selectedOpt.dataset.id) localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
 
-    const payload = {
-      action: 'addCallRecord',
-      customerId: customer.id,
-      callDate: document.getElementById('callDate').value,
-      result: selectedCallStatus,
-      duration: document.getElementById('callDuration').value || fmtTimer(timerSeconds),
-      operator: sel.value,
-      memo: document.getElementById('callMemo').value.trim(),
-      tags: [...selectedTags].join(','),
-    };
-
     showLoading(true);
     try {
-      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      await apiAddCallRecord({
+        customerId: customer.id,
+        callDate:   document.getElementById('callDate').value,
+        result:     selectedCallStatus,
+        duration:   document.getElementById('callDuration').value || fmtTimer(timerSeconds),
+        operator:   sel.value,
+        memo:       document.getElementById('callMemo').value.trim(),
+        tags:       [...selectedTags].join(','),
+      });
       showToast('架電結果を登録しました', 'success');
-
       document.getElementById('callMemo').value = '';
       selectedCallStatus = '';
       renderCallStatusButtons();
       resetTimer();
       initCallDate();
-
       await loadCustomerDetail(customer.id);
-    } catch (e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    } catch(e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
     return false;
   }
@@ -678,42 +654,36 @@
 
   async function handleEdit(event) {
     event.preventDefault();
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
     const f = event.target;
-    const payload = {
-      action: 'updateCustomer', id: customer.id,
-      companyName: f.companyName.value.trim(), contactName: f.contactName.value.trim(),
-      department: f.department.value.trim(), phone: f.phone.value.trim(),
-      email: f.email.value.trim(), address: f.address.value.trim(),
-      tags: [...editTags].join(','),
-      notes: f.notes.value.trim(),
-    };
     showLoading(true);
     try {
-      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      await apiUpdateCustomer({
+        id:          customer.id,
+        companyName: f.companyName.value.trim(),
+        contactName: f.contactName.value.trim(),
+        department:  f.department.value.trim(),
+        phone:       f.phone.value.trim(),
+        email:       f.email.value.trim(),
+        address:     f.address.value.trim(),
+        tags:        [...editTags].join(','),
+        notes:       f.notes.value.trim(),
+      });
       showToast('顧客情報を更新しました', 'success');
       closeEditModal();
       await loadCustomerDetail(customer.id);
-    } catch (e) { showToast('更新に失敗しました: ' + e.message, 'error'); }
+    } catch(e) { showToast('更新に失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
     return false;
   }
 
   async function handleDelete() {
     if (!confirm(`「${customer.companyName}」を削除しますか？\nこの操作は取り消せません。`)) return;
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
     showLoading(true);
     try {
-      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'deleteCustomer', id: customer.id }) });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      await apiDeleteCustomer(customer.id);
       showToast('顧客を削除しました', 'success');
       setTimeout(() => { window.location.href = `customers.html?businessId=${encodeURIComponent(businessId)}`; }, 1000);
-    } catch (e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
+    } catch(e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
   }
 
