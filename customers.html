@@ -319,8 +319,6 @@
     return tagsByBiz[currentBusinessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
   }
 
-  const CACHE_KEY_CUSTOMERS = () => `customers_${currentBusinessId}`;
-
   document.addEventListener('DOMContentLoaded', async () => {
     const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
     if (auth) {
