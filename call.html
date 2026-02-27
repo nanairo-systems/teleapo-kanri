@@ -220,7 +220,15 @@
   </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
 <script>
+  // ── 認証チェック ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+
   const FIXED_LEFT = 'アポ獲得';
   const FIXED_RIGHT = '業種不一致';
 
@@ -231,8 +239,6 @@
   let timerRunning = false;
   let businessId = '';
   let selectedTags = new Set();
-
-  function getApiUrl() { return localStorage.getItem('gasApiUrl') || ''; }
 
   document.addEventListener('DOMContentLoaded', () => {
     const p = new URLSearchParams(window.location.search);
@@ -319,15 +325,12 @@
 
   // ── 顧客 ──
   async function loadCustomers() {
-    const apiUrl = getApiUrl();
-    if (!apiUrl) return;
     try {
-      const res = await fetch(`${apiUrl}?action=getCustomers`);
-      const data = await res.json();
-      customers = (data.customers || []).filter(c => c.businessId === businessId);
+      const data = await apiGetCustomers(businessId);
+      customers = data.customers || [];
       const preselect = new URLSearchParams(window.location.search).get('customerId');
       if (preselect) { const c = customers.find(x => x.id === preselect); if (c) selectCustomer(c); }
-    } catch (e) { console.error(e); }
+    } catch(e) { console.error('[loadCustomers]', e); }
   }
 
   function handleCustomerSearch() {
@@ -384,9 +387,8 @@
   // ── 送信 ──
   async function handleSubmit(event) {
     event.preventDefault();
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
-    if (!document.getElementById('selectedCustomerId').value) { showToast('顧客を選択してください', 'error'); return false; }
+    const customerId = document.getElementById('selectedCustomerId').value;
+    if (!customerId) { showToast('顧客を選択してください', 'error'); return false; }
     if (selectedTags.size === 0) { showToast('架電結果タグを1つ以上選択してください', 'error'); return false; }
 
     const sel = document.getElementById('operatorSelect');
@@ -395,33 +397,26 @@
     if (timerRunning) stopTimer();
 
     const selectedOpt = sel.selectedOptions[0];
-    if (selectedOpt && selectedOpt.dataset.id) {
-      localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
-    }
-
-    const resultStr = [...selectedTags].join(',');
-
-    const payload = {
-      action: 'addCallRecord',
-      customerId: document.getElementById('selectedCustomerId').value,
-      callDate: document.getElementById('callDate').value,
-      result: resultStr,
-      duration: document.getElementById('callDuration').value || formatTimer(timerSeconds),
-      operator: sel.value,
-      memo: document.getElementById('callMemo').value.trim(),
-    };
+    if (selectedOpt && selectedOpt.dataset.id) localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
 
     showLoading(true);
     try {
-      const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      showToast('架電結果を登録しました', 'success');
+      await apiAddCallRecord({
+        customerId,
+        callDate:  document.getElementById('callDate').value,
+        result:    [...selectedTags].join(','),
+        duration:  document.getElementById('callDuration').value || formatTimer(timerSeconds),
+        operator:  sel.value,
+        memo:      document.getElementById('callMemo').value.trim(),
+      });
+      showToast('架電結果を登録しました ✅', 'success');
       setTimeout(() => {
-        window.location.href = `detail.html?id=${encodeURIComponent(payload.customerId)}&businessId=${encodeURIComponent(businessId)}`;
+        window.location.href = `detail.html?id=${encodeURIComponent(customerId)}&businessId=${encodeURIComponent(businessId)}`;
       }, 1000);
-    } catch (e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
-    finally { showLoading(false); }
+    } catch(e) {
+      console.error('[handleSubmit]', e);
+      showToast('登録に失敗しました: ' + (e.message || String(e)), 'error');
+    } finally { showLoading(false); }
     return false;
   }
 

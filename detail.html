@@ -596,8 +596,6 @@
   // ── 架電結果送信 ──
   async function handleCallSubmit(event) {
     event.preventDefault();
-    const apiUrl = getApiUrl();
-    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return false; }
     const sel = document.getElementById('operatorSelect');
     if (!sel.value) { showToast('対応者を選択してください', 'error'); return false; }
     if (timerRunning) stopTimer();

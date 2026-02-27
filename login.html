@@ -94,6 +94,8 @@
   </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
 <script>
   // すでにログイン済みなら index.html へ
   (function() {
@@ -162,17 +164,11 @@
     return false;
   }
 
-  // GASからユーザー情報を取得してローカルに反映
-  (async function syncUsersFromGas() {
-    const apiUrl = localStorage.getItem('gasApiUrl');
-    if (!apiUrl) return;
+  // Supabaseからユーザー情報を取得してローカルに反映
+  (async function syncUsersFromSupabase() {
     try {
-      const res  = await fetch(`${apiUrl}?action=getSettings`);
-      const data = await res.json();
-      if (data.settings && data.settings.users) {
-        localStorage.setItem('users', JSON.stringify(data.settings.users));
-        refreshHint();
-      }
+      await syncSettingsFromSupabase();
+      refreshHint();
     } catch(e) {}
   })();
 </script>
