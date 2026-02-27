@@ -385,22 +385,6 @@
     return tagsByBiz[businessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
   }
 
-  // ── 設定同期 ──
-  async function loadAppSettings() {
-    const apiUrl = getApiUrl();
-    if (apiUrl) {
-      try {
-        const res = await fetch(`${apiUrl}?action=getSettings`);
-        const data = await res.json();
-        if (data.settings) {
-          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
-          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
-          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
-        }
-      } catch(e) {}
-    }
-  }
-
   document.addEventListener('DOMContentLoaded', async () => {
     const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
     if (auth) {
@@ -411,12 +395,42 @@
     const params = getParams();
     businessId = params.businessId;
     if (!params.id) { window.location.href = 'index.html'; return; }
-    await loadAppSettings();
+
     updateNavLinks();
     populateOperators();
     initCallDate();
     renderCallStatusButtons();
-    loadCustomerDetail(params.id);
+
+    // 設定と顧客詳細を同時取得
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showToast('GAS APIのURLが未設定です', 'error'); return; }
+    showLoading(true);
+    try {
+      const [settingsRes, customerRes] = await Promise.all([
+        fetch(`${apiUrl}?action=getSettings`),
+        fetch(`${apiUrl}?action=getCustomer&id=${encodeURIComponent(params.id)}`)
+      ]);
+      const [settingsData, customerData] = await Promise.all([
+        settingsRes.json(),
+        customerRes.json()
+      ]);
+
+      if (settingsData.settings) {
+        if (settingsData.settings.businesses) localStorage.setItem('businesses', JSON.stringify(settingsData.settings.businesses));
+        if (settingsData.settings.operators) localStorage.setItem('operators', JSON.stringify(settingsData.settings.operators));
+        if (settingsData.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(settingsData.settings.customerTagsByBusiness));
+        updateNavLinks();
+        populateOperators();
+      }
+
+      if (customerData.error) throw new Error(customerData.error);
+      customer = customerData.customer;
+      callRecords = customerData.callHistory || [];
+      renderDetail();
+      renderTagButtons();
+    } catch(e) { showToast('読み込みに失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('navMenu').classList.toggle('open');
     });

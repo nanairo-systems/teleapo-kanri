@@ -317,21 +317,7 @@
     return tagsByBiz[currentBusinessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
   }
 
-  // ── 設定同期 ──
-  async function loadAppSettings() {
-    const apiUrl = getApiUrl();
-    if (apiUrl) {
-      try {
-        const res = await fetch(`${apiUrl}?action=getSettings`);
-        const data = await res.json();
-        if (data.settings) {
-          if (data.settings.businesses) localStorage.setItem('businesses', JSON.stringify(data.settings.businesses));
-          if (data.settings.operators) localStorage.setItem('operators', JSON.stringify(data.settings.operators));
-          if (data.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(data.settings.customerTagsByBusiness));
-        }
-      } catch(e) {}
-    }
-  }
+  const CACHE_KEY_CUSTOMERS = () => `customers_${currentBusinessId}`;
 
   document.addEventListener('DOMContentLoaded', async () => {
     const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
@@ -343,16 +329,58 @@
     currentBusinessId = getBusinessId();
     if (!currentBusinessId) { window.location.href = 'index.html'; return; }
 
-    await loadAppSettings();
+    // キャッシュから即座に表示
+    const cached = localStorage.getItem(CACHE_KEY_CUSTOMERS());
+    if (cached) {
+      try {
+        allCustomers = JSON.parse(cached);
+        const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+        currentBusiness = businesses.find(b => b.id === currentBusinessId);
+        if (currentBusiness) { renderBanner(); updateNavLinks(); renderFilterTags(); applyFilters(); updateStats(allCustomers); }
+      } catch(e) {}
+    }
 
-    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
-    currentBusiness = businesses.find(b => b.id === currentBusinessId);
-    if (!currentBusiness) { window.location.href = 'index.html'; return; }
+    // 設定と顧客データを同時取得
+    const apiUrl = getApiUrl();
+    if (apiUrl) {
+      showLoading(true);
+      try {
+        const [settingsRes, customersRes] = await Promise.all([
+          fetch(`${apiUrl}?action=getSettings`),
+          fetch(`${apiUrl}?action=getCustomers&businessId=${encodeURIComponent(currentBusinessId)}`)
+        ]);
+        const [settingsData, customersData] = await Promise.all([
+          settingsRes.json(),
+          customersRes.json()
+        ]);
 
-    renderBanner();
-    updateNavLinks();
-    renderFilterTags();
-    loadCustomers();
+        if (settingsData.settings) {
+          if (settingsData.settings.businesses) localStorage.setItem('businesses', JSON.stringify(settingsData.settings.businesses));
+          if (settingsData.settings.operators) localStorage.setItem('operators', JSON.stringify(settingsData.settings.operators));
+          if (settingsData.settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(settingsData.settings.customerTagsByBusiness));
+        }
+
+        if (customersData.error) throw new Error(customersData.error);
+        allCustomers = (customersData.customers || []).filter(c => c.businessId === currentBusinessId);
+        localStorage.setItem(CACHE_KEY_CUSTOMERS(), JSON.stringify(allCustomers));
+
+        const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+        currentBusiness = businesses.find(b => b.id === currentBusinessId);
+        if (!currentBusiness) { window.location.href = 'index.html'; return; }
+
+        renderBanner(); updateNavLinks(); renderFilterTags(); applyFilters(); updateStats(allCustomers);
+      } catch(e) {
+        if (!cached) {
+          showToast('データの読み込みに失敗しました: ' + e.message, 'error');
+          renderEmpty('データの読み込みに失敗しました。<br>設定を確認してください。');
+          updateStats([]);
+        }
+      } finally { showLoading(false); }
+    } else if (!cached) {
+      renderEmpty('GAS APIのURLが設定されていません。<br><a href="settings.html">設定画面</a>でURLを入力してください。');
+      updateStats([]);
+    }
+
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('navMenu').classList.toggle('open');
     });
@@ -390,22 +418,18 @@
 
   async function loadCustomers() {
     const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      renderEmpty('GAS APIのURLが設定されていません。<br><a href="settings.html">設定画面</a>でURLを入力してください。');
-      updateStats([]); return;
-    }
+    if (!apiUrl) { return; }
     showLoading(true);
     try {
       const res = await fetch(`${apiUrl}?action=getCustomers&businessId=${encodeURIComponent(currentBusinessId)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       allCustomers = (data.customers || []).filter(c => c.businessId === currentBusinessId);
+      localStorage.setItem(CACHE_KEY_CUSTOMERS(), JSON.stringify(allCustomers));
       applyFilters();
       updateStats(allCustomers);
     } catch (e) {
       showToast('データの読み込みに失敗しました: ' + e.message, 'error');
-      renderEmpty('データの読み込みに失敗しました。<br>設定を確認してください。');
-      updateStats([]);
     } finally { showLoading(false); }
   }
 
