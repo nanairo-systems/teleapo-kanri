@@ -71,7 +71,7 @@
   <div class="login-title">テレアポ顧客管理</div>
   <div class="login-subtitle">ログインしてください</div>
 
-  <div class="default-hint" id="defaultHint">
+  <div class="default-hint" id="defaultHint" style="display:none;">
     <strong>🔑 初期設定アカウント（初回のみ）</strong><br>
     ID：<code>admin</code>　パスワード：<code>admin123</code><br>
     ログイン後、設定画面でパスワードと追加アカウントを設定してください
@@ -111,14 +111,9 @@
       .map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // 登録済みユーザーがいる場合は初期ヒントを非表示
   function refreshHint() {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.length > 0) {
-      document.getElementById('defaultHint').style.display = 'none';
-    }
+    // ヒントは常に非表示（セキュリティのため）
   }
-  refreshHint();
 
   async function handleLogin(event) {
     event.preventDefault();
