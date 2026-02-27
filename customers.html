@@ -269,7 +269,7 @@
       <button class="modal-close" onclick="closeAddModal()">&times;</button>
     </div>
     <div class="modal-body">
-      <form id="addCustomerForm" onsubmit="return handleAddCustomer(event)">
+      <form id="addCustomerForm" onsubmit="return false">
         <div class="form-group"><label>会社名<span class="required">*</span></label><input type="text" name="companyName" required placeholder="例：株式会社サンプル"></div>
         <div class="form-row">
           <div class="form-group"><label>担当者名</label><input type="text" name="contactName" placeholder="例：山田太郎"></div>
@@ -285,7 +285,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeAddModal()">キャンセル</button>
-      <button class="btn btn-primary" onclick="document.getElementById('addCustomerForm').requestSubmit()">登録する</button>
+      <button class="btn btn-primary" onclick="doAddCustomer()">登録する</button>
     </div>
   </div>
 </div>
@@ -559,30 +559,37 @@
   function openAddModal() { document.getElementById('addCustomerForm').reset(); document.getElementById('addModal').classList.add('show'); }
   function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
-  async function handleAddCustomer(event) {
-    event.preventDefault();
-    const form = event.target;
+  async function doAddCustomer() {
+    const form = document.getElementById('addCustomerForm');
+    const companyName = (form.companyName.value || '').trim();
+    const phone       = (form.phone.value || '').trim();
+
+    if (!companyName) { showToast('会社名を入力してください', 'error'); return; }
+    if (!phone)       { showToast('電話番号を入力してください', 'error'); return; }
+    if (!currentBusinessId) { showToast('業務IDが取得できません。ページを再読み込みしてください', 'error'); return; }
+
+    console.log('[doAddCustomer] 開始 businessId:', currentBusinessId, 'company:', companyName);
     showLoading(true);
     try {
       await apiAddCustomer({
         businessId:  currentBusinessId,
-        companyName: form.companyName.value.trim(),
-        contactName: form.contactName.value.trim(),
-        department:  form.department.value.trim(),
-        phone:       form.phone.value.trim(),
-        email:       form.email.value.trim(),
-        address:     form.address.value.trim(),
-        notes:       form.notes.value.trim(),
+        companyName,
+        contactName: (form.contactName.value || '').trim(),
+        department:  (form.department.value  || '').trim(),
+        phone,
+        email:       (form.email.value   || '').trim(),
+        address:     (form.address.value || '').trim(),
+        notes:       (form.notes.value   || '').trim(),
       });
-      showToast('顧客を登録しました', 'success');
+      console.log('[doAddCustomer] INSERT成功');
+      showToast('顧客を登録しました ✅', 'success');
       closeAddModal();
+      form.reset();
       await loadCustomers();
     } catch(e) {
-      console.error('[handleAddCustomer] error:', e);
+      console.error('[doAddCustomer] エラー:', e);
       showToast('登録に失敗しました: ' + (e.message || String(e)), 'error');
-    }
-    finally { showLoading(false); }
-    return false;
+    } finally { showLoading(false); }
   }
 
   function renderEmpty(message) {

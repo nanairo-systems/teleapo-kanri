@@ -2,10 +2,16 @@
 // テレアポ顧客管理システム - Supabase API ラッパー
 // ============================================================
 
-const SUPABASE_URL  = 'https://ruyiqlgqzjotrcxxlprt.supabase.co';
+const SUPABASE_URL      = 'https://ruyiqlgqzjotrcxxlprt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_uBtc7mr7El_WnoTMe3GkEQ_nzqfSZd9';
 
-const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let _sb;
+try {
+  _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log('[Supabase] クライアント初期化OK');
+} catch(e) {
+  console.error('[Supabase] クライアント初期化失敗:', e);
+}
 
 // ── スネークケース → キャメルケース 変換 ──
 function rowToCustomer(row) {
@@ -84,12 +90,14 @@ async function apiAddCustomer(payload) {
     call_count:   0,
     notes:        payload.notes       || '',
   };
-  console.log('[apiAddCustomer] INSERT row:', row);
+  console.log('[apiAddCustomer] INSERT row:', JSON.stringify(row));
+  if (!_sb) throw new Error('Supabaseクライアントが初期化されていません');
   const { error } = await _sb.from('customers').insert(row);
   if (error) {
-    console.error('[apiAddCustomer] Supabase error:', error);
-    throw new Error(error.message || JSON.stringify(error));
+    console.error('[apiAddCustomer] Supabase INSERT失敗:', error.code, error.message, error.details, error.hint);
+    throw new Error(`[${error.code}] ${error.message}`);
   }
+  console.log('[apiAddCustomer] INSERT成功');
   return { success: true };
 }
 
