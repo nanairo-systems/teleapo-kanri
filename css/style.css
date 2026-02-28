@@ -1472,11 +1472,13 @@ tbody tr:last-child td { border-bottom: none; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 .business-card-wrapper {
   position: relative;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .business-card {
@@ -1493,6 +1495,7 @@ tbody tr:last-child td { border-bottom: none; }
   display: flex;
   flex-direction: column;
   width: 100%;
+  flex: 1;
 }
 .business-card:hover {
   box-shadow: var(--shadow-md);
