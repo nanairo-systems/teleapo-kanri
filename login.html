@@ -78,7 +78,7 @@
     ログイン後、設定画面でパスワードと追加アカウントを設定してください
   </div>
 
-  <form id="loginForm" onsubmit="return handleLogin(event)" autocomplete="on">
+  <form id="loginForm" onsubmit="doLogin(); return false" autocomplete="on">
     <div class="form-group">
       <label for="loginId">ID</label>
       <input type="text" id="loginId" name="username"
@@ -89,7 +89,7 @@
       <input type="password" id="loginPassword" name="password"
              autocomplete="current-password" placeholder="パスワードを入力" required>
     </div>
-    <button type="submit" class="btn-login" id="loginBtn">ログイン</button>
+    <button type="button" class="btn-login" id="loginBtn" onclick="doLogin()">ログイン</button>
     <div class="error-msg" id="loginError"></div>
   </form>
 </div>
@@ -118,12 +118,14 @@
     // ヒントは常に非表示（セキュリティのため）
   }
 
-  async function handleLogin(event) {
-    event.preventDefault();
-    const id       = document.getElementById('loginId').value.trim();
-    const password = document.getElementById('loginPassword').value;
+  async function doLogin() {
+    const id       = (document.getElementById('loginId').value || '').trim();
+    const password = document.getElementById('loginPassword').value || '';
     const errorEl  = document.getElementById('loginError');
     const btn      = document.getElementById('loginBtn');
+
+    if (!id) { errorEl.textContent = 'IDを入力してください'; errorEl.style.display = ''; return; }
+    if (!password) { errorEl.textContent = 'パスワードを入力してください'; errorEl.style.display = ''; return; }
 
     btn.textContent = '確認中...';
     btn.disabled = true;
@@ -148,7 +150,6 @@
         return;
       }
 
-      // セッション保存（30日間）
       localStorage.setItem('authSession', JSON.stringify({
         userId : user.loginId,
         name   : user.name,
@@ -157,17 +158,21 @@
       }));
 
       location.href = 'index.html';
+    } catch(e) {
+      errorEl.textContent = 'エラー: ' + (e.message || 'ログインに失敗しました');
+      errorEl.style.display = '';
     } finally {
       btn.textContent = 'ログイン';
       btn.disabled = false;
     }
-    return false;
   }
 
-  // Supabaseからユーザー情報を取得してローカルに反映
-  (async function syncUsersFromSupabase() {
+  // Supabaseからユーザー情報を取得（ログインに必須ではない）
+  (async function init() {
     try {
-      await syncSettingsFromSupabase();
+      if (typeof syncSettingsFromSupabase === 'function') {
+        await syncSettingsFromSupabase();
+      }
       refreshHint();
     } catch(e) {}
   })();
