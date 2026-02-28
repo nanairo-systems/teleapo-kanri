@@ -165,7 +165,7 @@
     const isAdmin = auth && auth.role === 'admin';
     const cardsHtml = visibleBiz.map(biz => `
       <div class="business-card-wrapper">
-        <a class="business-card${isAdmin ? ' has-admin-strip' : ''}" href="customers.html?businessId=${encodeURIComponent(biz.id)}" data-id="${biz.id}">
+        <a class="business-card" href="customers.html?businessId=${encodeURIComponent(biz.id)}" data-id="${biz.id}">
           <div class="business-card-banner" style="background:${biz.color}"></div>
           <div class="business-card-body">
             <div class="business-card-icon" style="background:${biz.color}15">${biz.icon}</div>
@@ -187,10 +187,10 @@
             </div>
           </div>
         </a>
-        ${isAdmin ? `
-        <div class="card-admin-strip">
-          <button class="card-admin-btn" onclick="editBusiness('${biz.id}')">✏️ 編集</button>
-          <button class="card-admin-btn danger" onclick="deleteBusiness('${biz.id}')">🗑️ 削除</button>
+        ${isAdmin ? `<button class="card-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${biz.id}')">⋮</button>
+        <div class="card-menu" id="menu-${biz.id}">
+          <button class="card-menu-item" onclick="editBusiness('${biz.id}')">✏️ 編集</button>
+          <button class="card-menu-item danger" onclick="deleteBusiness('${biz.id}')">🗑️ 削除</button>
         </div>` : ''}
       </div>
     `).join('');

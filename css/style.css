@@ -1574,38 +1574,62 @@ tbody tr:last-child td { border-bottom: none; }
 .add-card-text { font-size: 13px; font-weight: 500; }
 
 
-/* ── Card Admin Strip ─────────────────────────────────── */
+/* ── Card Menu (context) ──────────────────────────────── */
 
-.business-card.has-admin-strip {
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  border-bottom: none;
-}
-
-.card-admin-strip {
-  display: flex;
+.card-menu-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-top: 1px solid var(--border-subtle);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  overflow: hidden;
-  background: var(--slate-100);
-}
-.card-admin-btn {
-  flex: 1;
-  padding: 9px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
+  border-radius: var(--radius-sm);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary);
-  font-family: inherit;
-  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
-  letter-spacing: 0.02em;
+  font-size: 14px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--duration);
+  z-index: 5;
 }
-.card-admin-btn + .card-admin-btn { border-left: 1px solid var(--border-subtle); }
-.card-admin-btn:hover { background: var(--slate-200); color: var(--text-primary); }
-.card-admin-btn.danger { color: var(--danger); }
-.card-admin-btn.danger:hover { background: var(--danger-muted); }
+.business-card-wrapper:hover .card-menu-btn { opacity: 1; }
+.card-menu-btn:hover { background: var(--slate-50); color: var(--text-primary); }
+
+.card-menu {
+  display: none;
+  position: absolute;
+  top: 52px;
+  right: 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+  z-index: 10;
+  overflow: hidden;
+}
+.card-menu.show { display: block; }
+.card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--duration);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.card-menu-item:hover { background: var(--slate-50); color: var(--text-primary); }
+.card-menu-item.danger { color: var(--danger); }
+.card-menu-item.danger:hover { background: var(--danger-muted); }
 
 
 /* ── Icon & Color Pickers ─────────────────────────────── */
@@ -2070,10 +2094,7 @@ body.login-page {
 
   .login-card { padding: 36px 28px; }
 
-  /* スマホでは管理者ストリップを非表示・カードの角丸を通常に戻す */
-  .card-admin-strip { display: none; }
-  .business-card.has-admin-strip {
-    border-radius: var(--radius-lg);
-    border-bottom: 1px solid var(--border);
-  }
+  /* スマホでは⋮メニューボタン・ドロップダウンを完全に非表示 */
+  .card-menu-btn { display: none; }
+  .card-menu { display: none !important; }
 }
