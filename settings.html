@@ -450,10 +450,18 @@
     const hashed = await hashPassword(password);
     users.push({ loginId, name, password: hashed, role });
     saveUsers(); renderUsers();
+
+    // 対応者マスターにも同名で自動登録（架電はログイン者＝対応者で固定のため）
+    if (!operators.find(op => op.name === name)) {
+      operators.push({ id: Date.now().toString(36), name, businessIds: [] });
+      saveOperators();
+      renderOperators();
+    }
+
     document.getElementById('newUserId').value = '';
     document.getElementById('newUserName').value = '';
     document.getElementById('newUserPassword').value = '';
-    showToast(`${name} を追加しました`, 'success');
+    showToast(`${name} を追加しました（対応者にも登録済み）`, 'success');
   }
 
   async function changePassword(idx) {

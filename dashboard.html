@@ -350,11 +350,12 @@
     const bizSel = document.getElementById('bizFilter');
     businesses.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; bizSel.appendChild(o); });
 
-    const operators = JSON.parse(localStorage.getItem('operators') || '[]');
-    const opSel = document.getElementById('opFilter');
-    operators.forEach(op => { const o = document.createElement('option'); o.value = op.name; o.textContent = op.name; opSel.appendChild(o); });
-
     await loadDashboard();
+
+    // 担当者フィルタは実データ（架電履歴）から動的に構築（ログイン者＝対応者で固定のため）
+    const opSel = document.getElementById('opFilter');
+    const opNames = [...new Set((dashData.calls || []).map(c => c.operator).filter(Boolean))].sort();
+    opNames.forEach(name => { const o = document.createElement('option'); o.value = name; o.textContent = name; opSel.appendChild(o); });
 
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('navMenu').classList.toggle('open');

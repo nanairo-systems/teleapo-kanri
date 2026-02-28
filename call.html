@@ -90,10 +90,8 @@
             <input type="datetime-local" id="callDate" name="callDate">
           </div>
           <div class="form-group">
-            <label>対応者<span class="required">*</span></label>
-            <select id="operatorSelect" name="operator">
-              <option value="">-- 対応者を選択 --</option>
-            </select>
+            <label>対応者</label>
+            <div id="operatorDisplay" class="operator-display">—</div>
           </div>
         </div>
 
@@ -138,7 +136,7 @@
 
     updateNavLinks();
     renderTagButtons();
-    populateOperators();
+    setOperatorDisplay();
 
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -194,24 +192,11 @@
     }
   }
 
-  // ── 対応者ドロップダウン ──
-  function populateOperators() {
-    const operators = JSON.parse(localStorage.getItem('operators') || '[]');
-    const sel = document.getElementById('operatorSelect');
-
-    const filtered = operators.filter(op => {
-      if (!op.businessIds || op.businessIds.length === 0) return true;
-      return op.businessIds.includes(businessId);
-    });
-
-    sel.innerHTML = '<option value="">-- 対応者を選択 --</option>' +
-      filtered.map(op => `<option value="${esc(op.name)}" data-id="${op.id}">${esc(op.name)}</option>`).join('');
-
-    const lastOpId = localStorage.getItem('lastOperatorId');
-    if (lastOpId) {
-      const opt = sel.querySelector(`option[data-id="${lastOpId}"]`);
-      if (opt) opt.selected = true;
-    }
+  // ── 対応者（ログイン者で固定） ──
+  function setOperatorDisplay() {
+    const auth = getCurrentUser();
+    const el = document.getElementById('operatorDisplay');
+    if (el) el.textContent = auth?.name || '—';
   }
 
   // ── 顧客 ──
@@ -282,13 +267,10 @@
     if (!customerId) { showToast('顧客を選択してください', 'error'); return false; }
     if (selectedTags.size === 0) { showToast('架電結果タグを1つ以上選択してください', 'error'); return false; }
 
-    const sel = document.getElementById('operatorSelect');
-    if (!sel.value) { showToast('対応者を選択してください', 'error'); return false; }
+    const auth = getCurrentUser();
+    if (!auth?.name) { showToast('ログイン情報の取得に失敗しました', 'error'); return false; }
 
     if (timerRunning) stopTimer();
-
-    const selectedOpt = sel.selectedOptions[0];
-    if (selectedOpt && selectedOpt.dataset.id) localStorage.setItem('lastOperatorId', selectedOpt.dataset.id);
 
     showLoading(true);
     try {
@@ -297,7 +279,7 @@
         callDate:  document.getElementById('callDate').value,
         result:    [...selectedTags].join(','),
         duration:  document.getElementById('callDuration').value || formatTimer(timerSeconds),
-        operator:  sel.value,
+        operator:  auth.name,
         memo:      document.getElementById('callMemo').value.trim(),
       });
       showToast('架電結果を登録しました ✅', 'success');
