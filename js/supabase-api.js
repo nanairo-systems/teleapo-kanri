@@ -262,6 +262,29 @@ async function apiAddCallRecord(payload) {
   return { success: true };
 }
 
+async function apiUpdateCallRecord(callId, payload) {
+  _ensureClient();
+  const updates = {};
+  if (payload.callDate !== undefined) updates.call_date = payload.callDate;
+  if (payload.result   !== undefined) updates.result    = payload.result;
+  if (payload.duration !== undefined) updates.duration  = payload.duration;
+  if (payload.memo     !== undefined) updates.memo      = payload.memo;
+  const { error } = await _sb.from('call_history').update(updates).eq('id', callId);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+async function apiDeleteCallRecord(callId, customerId) {
+  _ensureClient();
+  const { error } = await _sb.from('call_history').delete().eq('id', callId);
+  if (error) throw new Error(error.message);
+  const { data: cur } = await _sb.from('customers').select('call_count').eq('id', customerId).single();
+  await _sb.from('customers').update({
+    call_count: Math.max(0, ((cur?.call_count) || 0) - 1)
+  }).eq('id', customerId);
+  return { success: true };
+}
+
 async function apiGetAllCallHistory(filters) {
   _ensureClient();
   let query = _sb.from('call_history').select('*').order('call_date', { ascending: false });

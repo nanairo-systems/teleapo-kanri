@@ -40,12 +40,8 @@
       <button class="btn btn-outline btn-sm" onclick="goBackToList()">← 戻る</button>
       <h1 id="pageTitle">顧客詳細</h1>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-outline" onclick="openEditModal()">✏️ 編集</button>
-      <button class="btn btn-outline btn-sm" onclick="handleArchive()" title="アーカイブ">📦 アーカイブ</button>
-      <button class="btn btn-danger btn-sm" onclick="handleDelete()">🗑️ 削除</button>
-    </div>
   </div>
+
   <div id="crossBizDups" style="display:none;margin-bottom:16px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;"></div>
 
   <!-- 電話発信ボタン -->
@@ -115,22 +111,52 @@
     <!-- 左: 顧客情報 -->
     <div>
       <div class="card">
-        <div class="card-header"><h2>📋 顧客情報</h2></div>
+        <div class="card-header">
+          <h2>📋 顧客情報</h2>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" onclick="openEditModal()">✏️ 編集</button>
+            <button class="btn btn-outline btn-sm" onclick="handleArchive()" title="アーカイブ">📦 アーカイブ</button>
+            <button class="btn btn-danger btn-sm" onclick="handleDelete()">🗑️ 削除</button>
+          </div>
+        </div>
         <div class="card-body">
           <div class="customer-tags" id="customerTagsDisplay"></div>
           <div class="info-grid" id="customerInfo" style="margin-top:14px;"></div>
         </div>
       </div>
+
+      <!-- 備考カード -->
       <div class="card">
-        <div class="card-header"><h2>📝 備考</h2></div>
-        <div class="card-body"><p id="customerNotes" style="font-size:14px;color:var(--gray-600);white-space:pre-wrap;">-</p></div>
+        <div class="card-header">
+          <h2>📝 備考</h2>
+          <button class="btn btn-outline btn-sm" onclick="openAddNoteForm()">＋ 追加</button>
+        </div>
+        <div class="card-body">
+          <!-- 備考追加フォーム（初期非表示） -->
+          <div id="addNoteForm" class="note-add-form" style="display:none;">
+            <textarea id="noteInput" placeholder="備考を入力..." rows="3"></textarea>
+            <div class="form-actions-inline" style="margin-top:8px;">
+              <button class="btn btn-sm btn-outline" onclick="closeAddNoteForm()">キャンセル</button>
+              <button class="btn btn-sm btn-primary" onclick="doAddNote()">追加する</button>
+            </div>
+          </div>
+          <div id="notesContainer"></div>
+        </div>
       </div>
     </div>
+
     <!-- 右: 架電履歴 -->
     <div>
       <div class="card">
-        <div class="card-header"><h2>📞 架電履歴</h2><span style="font-size:13px;color:var(--gray-500);" id="callCountLabel">0件</span></div>
-        <div class="card-body"><div id="callHistory"><div class="empty-state"><div class="empty-icon">📭</div><p>架電履歴はありません</p></div></div></div>
+        <div class="card-header">
+          <h2>📞 架電履歴</h2>
+          <span style="font-size:13px;color:var(--text-muted);" id="callCountLabel">0件</span>
+        </div>
+        <div class="card-body">
+          <div id="callHistory">
+            <div class="empty-state"><div class="empty-icon">📭</div><p>架電履歴はありません</p></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -156,12 +182,41 @@
           <label>ステータスタグ</label>
           <div class="tag-buttons" id="editTagButtons"></div>
         </div>
-        <div class="form-group"><label>備考</label><textarea name="notes"></textarea></div>
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeEditModal()">キャンセル</button>
       <button class="btn btn-primary" onclick="document.getElementById('editForm').requestSubmit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通話記録編集モーダル -->
+<div class="modal-backdrop" id="editCallModal">
+  <div class="modal">
+    <div class="modal-header"><h2>通話記録の編集</h2><button class="modal-close" onclick="closeEditCallModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>架電日時</label>
+        <input type="datetime-local" id="editCallDate">
+      </div>
+      <div class="form-group">
+        <label>電話ステータス</label>
+        <div class="tag-buttons" id="editCallStatusButtons"></div>
+      </div>
+      <div class="form-group">
+        <label>通話時間</label>
+        <input type="text" id="editCallDuration" placeholder="例: 03:45">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="editCallMemo"></textarea>
+      </div>
+      <input type="hidden" id="editingCallId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEditCallModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="handleEditCall()">保存する</button>
     </div>
   </div>
 </div>
@@ -190,6 +245,7 @@
   let timerSeconds = 0;
   let timerRunning = false;
   let selectedCallStatus = '';
+  let editingCallStatus = '';
 
   function getParams() {
     const p = new URLSearchParams(window.location.search);
@@ -217,7 +273,6 @@
     initCallDate();
     renderCallStatusButtons();
 
-    // 設定と顧客詳細を同時取得（Supabase）
     showLoading(true);
     try {
       const [, customerData] = await Promise.all([
@@ -254,9 +309,6 @@
     document.getElementById('callDate').value = now.toISOString().slice(0, 16);
   }
 
-  // ════════════════════════════
-  // 顧客データ読み込み
-  // ════════════════════════════
   async function loadCustomerDetail(id) {
     showLoading(true);
     try {
@@ -278,11 +330,10 @@
     const phone = String(customer.phone || '');
     const phoneClean = phone.replace(/[-\s()]/g, '');
 
-    // タグ表示
     const tags = (customer.tags || '').split(',').filter(Boolean);
     document.getElementById('customerTagsDisplay').innerHTML = tags.length > 0
       ? tags.map(t => `<span class="badge badge-tag">${esc(t.trim())}</span>`).join(' ')
-      : '<span style="font-size:13px;color:var(--gray-400);">タグなし</span>';
+      : '<span style="font-size:13px;color:var(--text-muted);">タグなし</span>';
 
     document.getElementById('customerInfo').innerHTML = `
       <div class="info-item"><span class="info-label">会社名</span><span class="info-value">${esc(customer.companyName)}</span></div>
@@ -296,15 +347,91 @@
       <div class="info-item"><span class="info-label">登録日</span><span class="info-value">${formatDate(customer.createdAt)}</span></div>
       <div class="info-item"><span class="info-label">更新日</span><span class="info-value">${formatDate(customer.updatedAt)}</span></div>`;
 
-    document.getElementById('customerNotes').textContent = customer.notes || 'メモなし';
-
     if (phoneClean) {
       document.getElementById('telBtn').href = `tel:${phoneClean}`;
       document.getElementById('zoomBtn').href = `zoomphonecall://${phoneClean}`;
       document.getElementById('callActions').style.display = '';
     }
 
+    renderNotes();
     renderCallHistory();
+  }
+
+  // ════════════════════════════
+  // 備考管理
+  // ════════════════════════════
+  function parseNotes() {
+    if (!customer || !customer.notes) return [];
+    try {
+      const parsed = JSON.parse(customer.notes);
+      if (Array.isArray(parsed)) return parsed;
+    } catch(e) {}
+    // 旧形式（プレーンテキスト）を単一エントリに変換
+    return [{ id: 'legacy', date: customer.createdAt || new Date().toISOString(), author: '登録時', content: customer.notes }];
+  }
+
+  function renderNotes() {
+    const notes = parseNotes();
+    const container = document.getElementById('notesContainer');
+    if (notes.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted);font-size:14px;padding:4px 0;">備考はありません</p>';
+      return;
+    }
+    const sorted = [...notes].sort((a, b) => new Date(b.date) - new Date(a.date));
+    container.innerHTML = sorted.map(n => `
+      <div class="note-entry">
+        <div class="note-meta">
+          <span class="note-date">${formatDateTime(n.date)}</span>
+          <span class="note-author">${esc(n.author || '-')}</span>
+          ${n.id !== 'legacy' ? `<button class="note-delete-btn" onclick="deleteNote('${n.id}')" title="この備考を削除">×</button>` : ''}
+        </div>
+        <div class="note-content">${esc(n.content)}</div>
+      </div>`).join('');
+  }
+
+  function openAddNoteForm() {
+    document.getElementById('addNoteForm').style.display = '';
+    document.getElementById('noteInput').focus();
+  }
+
+  function closeAddNoteForm() {
+    document.getElementById('addNoteForm').style.display = 'none';
+    document.getElementById('noteInput').value = '';
+  }
+
+  async function doAddNote() {
+    const content = document.getElementById('noteInput').value.trim();
+    if (!content) { showToast('内容を入力してください', 'error'); return; }
+    const auth = getCurrentUser();
+    const notes = parseNotes();
+    notes.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: new Date().toISOString(),
+      author: auth?.name || '不明',
+      content
+    });
+    showLoading(true);
+    try {
+      await apiUpdateCustomer({ id: customer.id, notes: JSON.stringify(notes) });
+      customer.notes = JSON.stringify(notes);
+      renderNotes();
+      closeAddNoteForm();
+      showToast('備考を追加しました', 'success');
+    } catch(e) { showToast('失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function deleteNote(noteId) {
+    if (!confirm('この備考を削除しますか？')) return;
+    const notes = parseNotes().filter(n => n.id !== noteId);
+    showLoading(true);
+    try {
+      await apiUpdateCustomer({ id: customer.id, notes: JSON.stringify(notes) });
+      customer.notes = JSON.stringify(notes);
+      renderNotes();
+      showToast('備考を削除しました', 'success');
+    } catch(e) { showToast('失敗: ' + e.message, 'error'); }
+    finally { showLoading(false); }
   }
 
   // ════════════════════════════
@@ -358,11 +485,77 @@
       const resultBadge = r.result ? `<span class="badge badge-call-status">${esc(r.result)}</span>` : '';
       return `<div class="timeline-item">
         <div class="timeline-dot"></div>
-        <div class="timeline-header"><span class="timeline-date">${formatDateTime(r.callDate)}</span>${resultBadge}</div>
+        <div class="timeline-header">
+          <span class="timeline-date">${formatDateTime(r.callDate)}</span>
+          ${resultBadge}
+          <div class="timeline-actions">
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="openEditCallModal('${r.id}')" title="編集">✏️</button>
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;color:var(--danger);" onclick="handleDeleteCall('${r.id}')" title="削除">🗑️</button>
+          </div>
+        </div>
         <div class="timeline-body">${esc(r.memo || 'メモなし')}</div>
         <div class="timeline-meta">対応者: ${esc(r.operator || '-')} ／ 通話時間: ${r.duration || '-'}</div>
       </div>`;
     }).join('')}</div>`;
+  }
+
+  // ════════════════════════════
+  // 通話記録 編集・削除
+  // ════════════════════════════
+  function openEditCallModal(callId) {
+    const call = callRecords.find(r => r.id === callId);
+    if (!call) return;
+    document.getElementById('editingCallId').value = callId;
+    const dt = new Date(call.callDate);
+    dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+    document.getElementById('editCallDate').value = dt.toISOString().slice(0, 16);
+    document.getElementById('editCallDuration').value = call.duration || '';
+    document.getElementById('editCallMemo').value = call.memo || '';
+    editingCallStatus = call.result || '';
+    renderEditCallStatusButtons();
+    document.getElementById('editCallModal').classList.add('show');
+  }
+
+  function closeEditCallModal() { document.getElementById('editCallModal').classList.remove('show'); }
+
+  function renderEditCallStatusButtons() {
+    document.getElementById('editCallStatusButtons').innerHTML = CALL_STATUSES.map(s => {
+      const sel = editingCallStatus === s ? ' selected' : '';
+      return `<button type="button" class="call-status-btn${sel}" data-status="${esc(s)}" onclick="selectEditCallStatus(this)">${esc(s)}</button>`;
+    }).join('');
+  }
+
+  function selectEditCallStatus(btn) {
+    editingCallStatus = editingCallStatus === btn.dataset.status ? '' : btn.dataset.status;
+    renderEditCallStatusButtons();
+  }
+
+  async function handleEditCall() {
+    const callId = document.getElementById('editingCallId').value;
+    showLoading(true);
+    try {
+      await apiUpdateCallRecord(callId, {
+        callDate: document.getElementById('editCallDate').value,
+        result:   editingCallStatus,
+        duration: document.getElementById('editCallDuration').value.trim(),
+        memo:     document.getElementById('editCallMemo').value.trim(),
+      });
+      showToast('通話記録を更新しました', 'success');
+      closeEditCallModal();
+      await loadCustomerDetail(customer.id);
+    } catch(e) { showToast('更新に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function handleDeleteCall(callId) {
+    if (!confirm('この通話記録を削除しますか？\n架電回数も1件減ります。')) return;
+    showLoading(true);
+    try {
+      await apiDeleteCallRecord(callId, customer.id);
+      showToast('通話記録を削除しました', 'success');
+      await loadCustomerDetail(customer.id);
+    } catch(e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
   }
 
   // ════════════════════════════
@@ -443,7 +636,6 @@
     f.phone.value = customer.phone || '';
     f.email.value = customer.email || '';
     f.address.value = customer.address || '';
-    f.notes.value = customer.notes || '';
 
     editTags = new Set((customer.tags || '').split(',').filter(Boolean).map(t => t.trim()));
     const availableTags = getBusinessTags();
@@ -470,7 +662,6 @@
         email:       f.email.value.trim(),
         address:     f.address.value.trim(),
         tags:        [...editTags].join(','),
-        notes:       f.notes.value.trim(),
       });
       showToast('顧客情報を更新しました', 'success');
       closeEditModal();
@@ -539,6 +730,7 @@
     c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
   }
   document.getElementById('editModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeEditModal(); });
+  document.getElementById('editCallModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeEditCallModal(); });
 </script>
 
 </body>

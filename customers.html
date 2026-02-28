@@ -230,9 +230,18 @@
   function renderFilterTags() {
     const tags = getBusinessTags();
     const container = document.getElementById('filterTags');
+    const activeCount = activeTagFilters.size;
     container.innerHTML = '<span class="filter-tags-label">🏷️ タグ絞り込み:</span>' +
-      `<button class="filter-tag-btn no-tag" data-tag="__none__" onclick="toggleFilterTag(this)">タグなし</button>` +
-      tags.map(t => `<button class="filter-tag-btn" data-tag="${esc(t)}" onclick="toggleFilterTag(this)">${esc(t)}</button>`).join('');
+      (activeCount > 0 ? `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px;" onclick="clearTagFilters()">✕ フィルタ解除</button>` : '') +
+      `<button class="filter-tag-btn no-tag${activeTagFilters.has('__none__') ? ' active' : ''}" data-tag="__none__" onclick="toggleFilterTag(this)">タグなし</button>` +
+      tags.map(t => `<button class="filter-tag-btn${activeTagFilters.has(t) ? ' active' : ''}" data-tag="${esc(t)}" onclick="toggleFilterTag(this)">${esc(t)}</button>`).join('');
+  }
+
+  function clearTagFilters() {
+    activeTagFilters.clear();
+    saveFilterState();
+    renderFilterTags();
+    applyFilters();
   }
 
   function toggleFilterTag(btn) {
@@ -421,7 +430,7 @@
         <td style="white-space:nowrap">
           ${showingArchived
             ? `<button class="btn btn-sm btn-outline" onclick="event.preventDefault();restoreCustomer('${c.id}','${esc(c.companyName)}')">♻️ 復元</button>`
-            : `<a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">📞 架電</a>
+            : `<a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">📋 詳細</a>
                <button class="btn btn-sm btn-outline" onclick="event.preventDefault();archiveCustomer('${c.id}','${esc(c.companyName)}')" title="アーカイブ" style="padding:5px 8px;color:var(--gray-400);">📦</button>`}
         </td>
       </tr>`;
@@ -501,6 +510,14 @@
           showLoading(false); return;
         }
       }
+      const auth = getCurrentUser();
+      const notesText = (form.notes.value || '').trim();
+      const notesJson = notesText ? JSON.stringify([{
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        date: new Date().toISOString(),
+        author: auth?.name || '登録者',
+        content: notesText
+      }]) : '';
       await apiAddCustomer({
         businessId:  currentBusinessId,
         companyName,
@@ -509,7 +526,7 @@
         phone,
         email:       (form.email.value   || '').trim(),
         address:     (form.address.value || '').trim(),
-        notes:       (form.notes.value   || '').trim(),
+        notes:       notesJson,
       });
       showToast('顧客を登録しました ✅', 'success');
       closeAddModal();
