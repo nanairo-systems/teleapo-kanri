@@ -4,116 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>架電登録 - テレアポ顧客管理</title>
-  <style>
-    :root {
-      --primary: #2563eb; --primary-hover: #1d4ed8; --success: #16a34a;
-      --warning: #f59e0b; --danger: #dc2626; --info: #0891b2;
-      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
-      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
-      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
-      --gray-900: #111827; --radius: 8px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
-
-    .navbar { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
-    .navbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
-    .navbar-brand { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
-    .navbar-brand .icon { font-size: 22px; }
-    .navbar-nav { display: flex; gap: 4px; list-style: none; }
-    .navbar-nav a { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; color: var(--gray-600); font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
-    .navbar-nav a:hover { background: var(--gray-100); color: var(--gray-800); }
-    .navbar-nav a.active { background: #eff6ff; color: var(--primary); }
-
-    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
-    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); margin-bottom: 20px; flex-wrap: wrap; }
-    .breadcrumb a { color: var(--primary); text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
-    .page-header { margin-bottom: 24px; }
-    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); }
-    .page-header p { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
-
-    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
-    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
-    .card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .card-body { padding: 20px; }
-
-    .customer-select-box { position: relative; }
-    .customer-search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; outline: none; transition: border-color 0.15s; }
-    .customer-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    .customer-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow-md); max-height: 240px; overflow-y: auto; z-index: 10; margin-top: 4px; }
-    .customer-dropdown.show { display: block; }
-    .customer-option { padding: 10px 14px; cursor: pointer; font-size: 14px; border-bottom: 1px solid var(--gray-100); }
-    .customer-option:last-child { border-bottom: none; }
-    .customer-option:hover { background: #eff6ff; }
-    .customer-option .co-name { font-weight: 600; color: var(--gray-800); }
-    .customer-option .co-sub { font-size: 12px; color: var(--gray-500); }
-    .selected-customer { display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 12px 16px; margin-top: 8px; align-items: center; justify-content: space-between; }
-    .selected-customer.show { display: flex; }
-    .selected-customer .sc-info { display: flex; flex-direction: column; }
-    .selected-customer .sc-name { font-weight: 600; color: var(--gray-800); font-size: 15px; }
-    .selected-customer .sc-detail { font-size: 13px; color: var(--gray-500); }
-    .sc-remove { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--gray-400); padding: 4px 8px; border-radius: 4px; }
-    .sc-remove:hover { background: rgba(0,0,0,0.05); color: var(--gray-700); }
-
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
-    .form-group label .required { color: var(--danger); margin-left: 2px; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    .form-group textarea { resize: vertical; min-height: 120px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    /* ── 複数選択タグ ── */
-    .tag-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-    .tag-btn {
-      padding: 8px 18px; border: 2px solid var(--gray-200); border-radius: 999px;
-      background: #fff; font-size: 14px; font-weight: 500; cursor: pointer;
-      transition: all 0.15s; color: var(--gray-600); user-select: none;
-    }
-    .tag-btn:hover { border-color: var(--gray-400); }
-    .tag-btn.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
-    .tag-btn.tag-first.selected { border-color: var(--success); background: #dcfce7; color: #166534; }
-    .tag-btn.tag-last.selected { border-color: var(--danger); background: #fee2e2; color: #991b1b; }
-    .selected-tags-display { margin-top: 8px; font-size: 13px; color: var(--gray-500); }
-
-    .timer-section { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .timer-display { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gray-800); min-width: 120px; }
-    .timer-display.active { color: var(--primary); }
-    .timer-buttons { display: flex; gap: 8px; }
-
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-success { background: var(--success); color: #fff; }
-    .btn-success:hover { background: #15803d; }
-    .btn-outline { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
-    .btn-outline:hover { background: var(--gray-100); }
-    .btn-lg { padding: 12px 32px; font-size: 16px; }
-    .form-actions { display: flex; gap: 12px; justify-content: flex-end; padding-top: 8px; }
-
-    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; }
-    .loading-overlay.show { display: flex; }
-    .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .toast-container { position: fixed; top: 70px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
-    .toast { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 14px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 360px; }
-    .toast.success { border-left: 4px solid var(--success); }
-    .toast.error { border-left: 4px solid var(--danger); }
-    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
-
-    @media (max-width: 768px) {
-      .navbar { padding: 0 12px; }
-      .navbar-inner { flex-wrap: wrap; height: auto; padding: 8px 0; gap: 8px; }
-      .navbar-nav { width: 100%; overflow-x: auto; }
-      .container { padding: 16px; }
-      .form-row { grid-template-columns: 1fr; }
-      .timer-section { flex-direction: column; align-items: flex-start; }
-    }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -133,7 +24,7 @@
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast-container" id="toastContainer"></div>
 
-<div class="container">
+<div class="container" style="max-width:800px;">
   <div class="breadcrumb">
     <a href="index.html">ホーム</a><span>›</span>
     <a href="#" id="bcBiz">業務</a><span>›</span>
