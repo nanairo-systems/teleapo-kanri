@@ -2069,4 +2069,11 @@ body.login-page {
   .timer-section { flex-direction: column; align-items: flex-start; }
 
   .login-card { padding: 36px 28px; }
+
+  /* スマホでは管理者ストリップを非表示・カードの角丸を通常に戻す */
+  .card-admin-strip { display: none; }
+  .business-card.has-admin-strip {
+    border-radius: var(--radius-lg);
+    border-bottom: 1px solid var(--border);
+  }
 }
