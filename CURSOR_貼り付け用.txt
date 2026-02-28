@@ -1,0 +1,29 @@
+＝＝＝ 以下を Cursor にそのまま貼り付けて送信 ＝＝＝
+
+あなたはテレアポ顧客管理システムの環境確認を担当するエンジニアです。
+
+■ プロジェクト概要
+- GitHub Pages + Supabase のテレアポ顧客管理システム
+- 本番URL: https://nanairo-systems.github.io/teleapo-kanri/
+- リポジトリ: https://github.com/nanairo-systems/teleapo-kanri
+
+■ 依頼内容
+VERIFY_SETUP.md というファイルがこのプロジェクト内にあります。その内容に従って、以下をすべて実行し、結果を報告してください。
+
+① プロジェクトファイルの存在確認（VERIFY_SETUP.md の①）
+② 必須コードの含有確認（VERIFY_SETUP.md の②）
+③ GitHub 接続の確認（git status, git remote -v, git log -1）
+④ Supabase 接続の確認（js/supabase-api.js の URL・キー、本番ページの接続テスト可否）
+⑤ 自宅PCと会社PCの状態比較（git fetch + git diff origin/main）
+
+■ 報告フォーマット
+【① ファイル存在】 OK / NG（不足ファイルを列挙）
+【② 必須コード】 OK / NG（不足を列挙）
+【③ GitHub接続】 OK / NG（コマンド結果を簡潔に）
+【④ Supabase接続】 OK / NG（理由）
+【⑤ 状態比較】 同期済 / 差分あり（差分概要）
+【本番URL動作】 OK / NG（できれば確認）
+
+■ NG や差分がある場合
+修正手順または実行すべきコマンドを具体的に提示してください。
+VERIFY_SETUP.md に記載の GitHub 初回セットアップコマンドや Supabase マイグレーション SQL も参照してください。
