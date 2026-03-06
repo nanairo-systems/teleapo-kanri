@@ -10,6 +10,12 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 -- ── インデックス追加 ──
 CREATE INDEX IF NOT EXISTS idx_customers_archived ON customers(archived);
 
+-- ── 架電履歴に質問・回答列追加 ──
+ALTER TABLE call_history ADD COLUMN IF NOT EXISTS question    TEXT DEFAULT '';
+ALTER TABLE call_history ADD COLUMN IF NOT EXISTS answer      TEXT DEFAULT '';
+ALTER TABLE call_history ADD COLUMN IF NOT EXISTS answered_by TEXT DEFAULT '';
+ALTER TABLE call_history ADD COLUMN IF NOT EXISTS answered_at TIMESTAMPTZ;
+
 -- ── 権限確認（念のため再付与） ──
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON customers    TO anon, authenticated;

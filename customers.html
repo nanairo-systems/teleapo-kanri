@@ -17,6 +17,7 @@
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" class="active" id="navCustomers">📋 顧客一覧</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
+      <li><a href="questions.html">❓ 質問・回答</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -28,76 +29,89 @@
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast-container" id="toastContainer"></div>
 
-<div class="container">
-  <div class="breadcrumb">
-    <a href="index.html">ホーム</a><span>›</span><span id="breadcrumbBiz">顧客一覧</span>
-  </div>
-
-  <div class="biz-banner" id="bizBanner">
-    <div class="biz-banner-icon" id="bizIcon">📦</div>
-    <div class="biz-banner-info">
-      <h1 id="bizName">業務名</h1>
-      <p id="bizDesc">業務の説明</p>
+<div class="split-view" id="splitView">
+  <div class="split-list">
+    <div class="breadcrumb">
+      <a href="index.html">ホーム</a><span>›</span><span id="breadcrumbBiz">顧客一覧</span>
     </div>
-  </div>
 
-  <div class="page-header">
-    <div></div>
-    <button class="btn btn-primary" onclick="openAddModal()">＋ 新規顧客登録</button>
-  </div>
-
-  <div class="stats-row">
-    <div class="stat-card total"><div class="stat-value" id="statTotal">-</div><div class="stat-label">総顧客数</div></div>
-    <div class="stat-card called"><div class="stat-value" id="statCalled">-</div><div class="stat-label">架電済み</div></div>
-    <div class="stat-card not-called"><div class="stat-value" id="statNotCalled">-</div><div class="stat-label">未架電</div></div>
-  </div>
-
-  <div class="toolbar">
-    <div class="toolbar-row">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" placeholder="会社名・担当者名・電話番号で検索..." oninput="saveFilterState();applyFilters()">
+    <div class="biz-banner" id="bizBanner">
+      <div class="biz-banner-icon" id="bizIcon">📦</div>
+      <div class="biz-banner-info">
+        <h1 id="bizName">業務名</h1>
+        <p id="bizDesc">業務の説明</p>
       </div>
-      <select class="filter-select" id="callCountFilter" onchange="saveFilterState();applyFilters()">
-        <option value="">すべての架電状態</option>
-        <option value="0">未架電</option>
-        <option value="1-3">1〜3回</option>
-        <option value="4+">4回以上</option>
-      </select>
-      <select class="filter-select" id="sortSelect" onchange="saveFilterState();applyFilters()">
-        <option value="updated_desc">更新日（新しい順）</option>
-        <option value="updated_asc">更新日（古い順）</option>
-        <option value="company_asc">会社名（昇順）</option>
-        <option value="company_desc">会社名（降順）</option>
-        <option value="calls_desc">架電回数（多い順）</option>
-        <option value="created_desc">登録日（新しい順）</option>
-      </select>
     </div>
-    <div class="toolbar-row">
-      <div class="filter-tags" id="filterTags">
-        <span class="filter-tags-label">🏷️ タグ絞り込み:</span>
+
+    <div class="page-header">
+      <div></div>
+      <button class="btn btn-primary" onclick="openAddModal()">＋ 新規顧客登録</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card total"><div class="stat-value" id="statTotal">-</div><div class="stat-label">総顧客数</div></div>
+      <div class="stat-card called"><div class="stat-value" id="statCalled">-</div><div class="stat-label">架電済み</div></div>
+      <div class="stat-card not-called"><div class="stat-value" id="statNotCalled">-</div><div class="stat-label">未架電</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="会社名・担当者名・電話番号で検索..." oninput="saveFilterState();applyFilters()">
+        </div>
+        <select class="filter-select" id="callCountFilter" onchange="saveFilterState();applyFilters()">
+          <option value="">すべての架電状態</option>
+          <option value="0">未架電</option>
+          <option value="1-3">1〜3回</option>
+          <option value="4+">4回以上</option>
+        </select>
+        <select class="filter-select" id="sortSelect" onchange="saveFilterState();applyFilters()">
+          <option value="updated_desc">更新日（新しい順）</option>
+          <option value="updated_asc">更新日（古い順）</option>
+          <option value="company_asc">会社名（昇順）</option>
+          <option value="company_desc">会社名（降順）</option>
+          <option value="calls_desc">架電回数（多い順）</option>
+          <option value="created_desc">登録日（新しい順）</option>
+        </select>
       </div>
-      <button class="btn btn-sm btn-outline" id="tagModeBtn" onclick="toggleTagMode()" style="white-space:nowrap;margin-left:auto;">OR</button>
-      <button class="btn btn-sm btn-outline" id="archiveToggle" onclick="toggleArchiveView()" style="white-space:nowrap;">📦 アーカイブ</button>
+      <div class="toolbar-row">
+        <div class="filter-tags" id="filterTags">
+          <span class="filter-tags-label">🏷️ タグ絞り込み:</span>
+        </div>
+        <button class="btn btn-sm btn-outline" id="tagModeBtn" onclick="toggleTagMode()" style="white-space:nowrap;margin-left:auto;">OR</button>
+        <button class="btn btn-sm btn-outline" id="archiveToggle" onclick="toggleArchiveView()" style="white-space:nowrap;">📦 アーカイブ</button>
+      </div>
     </div>
+
+    <!-- PC テーブル -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>会社名</th><th>電話番号</th><th>タグ</th><th>架電回数</th><th>最終架電日</th><th>操作</th></tr></thead>
+          <tbody id="customerTableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination">
+        <span id="paginationInfo"></span>
+        <div class="pagination-buttons" id="paginationButtons"></div>
+      </div>
+    </div>
+
+    <!-- モバイルカード -->
+    <div class="mobile-cards" id="mobileCards"></div>
   </div>
 
-  <!-- PC テーブル -->
-  <div class="table-wrapper">
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>会社名</th><th>電話番号</th><th>タグ</th><th>架電回数</th><th>最終架電日</th><th>操作</th></tr></thead>
-        <tbody id="customerTableBody"></tbody>
-      </table>
-    </div>
-    <div class="pagination" id="pagination">
-      <span id="paginationInfo"></span>
-      <div class="pagination-buttons" id="paginationButtons"></div>
-    </div>
-  </div>
+  <!-- リサイズハンドル -->
+  <div class="split-resizer" id="splitResizer" style="display:none;"></div>
 
-  <!-- モバイルカード -->
-  <div class="mobile-cards" id="mobileCards"></div>
+  <!-- 詳細パネル -->
+  <div class="split-detail" id="splitDetail" style="display:none;">
+    <div class="split-detail-header">
+      <button class="btn-close-detail" onclick="closeDetail()">✕ 閉じる</button>
+    </div>
+    <iframe id="detailFrame" src="about:blank"></iframe>
+  </div>
 </div>
 
 <!-- 新規顧客登録モーダル -->
@@ -421,17 +435,18 @@
       const tagsHtml = tags.length > 0
         ? `<div class="tag-badges">${tags.map(t => `<span class="tag-badge">${esc(t.trim())}</span>`).join('')}</div>`
         : '<span style="color:var(--gray-400);font-size:12px;">-</span>';
-      return `<tr>
-        <td><a class="customer-name" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">${esc(c.companyName)}</a></td>
+      const rowClass = c.id === activeDetailId ? ' class="active-row"' : '';
+      return `<tr${rowClass} data-id="${c.id}" onclick="return openDetail(event,'${c.id}')" style="cursor:pointer">
+        <td><a class="customer-name" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}" onclick="return openDetail(event,'${c.id}')">${esc(c.companyName)}</a></td>
         <td>${esc(c.phone || '-')}</td>
         <td>${tagsHtml}</td>
         <td>${c.callCount || 0}回</td>
         <td>${c.lastCallDate ? formatDate(c.lastCallDate) : '-'}</td>
         <td style="white-space:nowrap">
           ${showingArchived
-            ? `<button class="btn btn-sm btn-outline" onclick="event.preventDefault();restoreCustomer('${c.id}','${esc(c.companyName)}')">♻️ 復元</button>`
-            : `<a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">📋 詳細</a>
-               <button class="btn btn-sm btn-outline" onclick="event.preventDefault();archiveCustomer('${c.id}','${esc(c.companyName)}')" title="アーカイブ" style="padding:5px 8px;color:var(--gray-400);">📦</button>`}
+            ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();restoreCustomer('${c.id}','${esc(c.companyName)}')">♻️ 復元</button>`
+            : `<a class="btn btn-sm btn-outline" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}" onclick="return openDetail(event,'${c.id}')">📋 詳細</a>
+               <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();archiveCustomer('${c.id}','${esc(c.companyName)}')" title="アーカイブ" style="padding:5px 8px;color:var(--gray-400);">📦</button>`}
         </td>
       </tr>`;
     }).join('');
@@ -450,7 +465,8 @@
       const tagsHtml = tags.length > 0
         ? `<div class="mobile-card-tags">${tags.map(t => `<span class="tag-badge">${esc(t.trim())}</span>`).join('')}</div>`
         : '';
-      return `<a class="mobile-card" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">
+      const activeClass = c.id === activeDetailId ? ' active-card' : '';
+      return `<a class="mobile-card${activeClass}" data-id="${c.id}" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">
         <div class="mobile-card-info">
           <div class="mobile-card-name">${esc(c.companyName)}</div>
           <div class="mobile-card-phone">${esc(c.phone || '-')}</div>
@@ -536,6 +552,79 @@
       showToast('登録に失敗しました: ' + (e.message || String(e)), 'error');
     } finally { showLoading(false); }
   }
+
+  // ── スプリットビュー ──
+  let activeDetailId = '';
+
+  function openDetail(event, id) {
+    // モバイルでは通常遷移
+    if (window.innerWidth <= 768) return true;
+    event.preventDefault();
+    activeDetailId = id;
+    const biz = encodeURIComponent(currentBusinessId);
+    const frame = document.getElementById('detailFrame');
+    frame.src = `detail.html?id=${encodeURIComponent(id)}&businessId=${biz}&embed=1`;
+    document.getElementById('splitDetail').style.display = '';
+    document.getElementById('splitResizer').style.display = '';
+    document.getElementById('splitView').classList.add('open');
+    // ハイライト更新
+    document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (row) row.classList.add('active-row');
+    document.querySelectorAll('.mobile-card.active-card').forEach(c => c.classList.remove('active-card'));
+    const card = document.querySelector(`.mobile-card[data-id="${id}"]`);
+    if (card) card.classList.add('active-card');
+    return false;
+  }
+
+  function closeDetail() {
+    activeDetailId = '';
+    document.getElementById('splitDetail').style.display = 'none';
+    document.getElementById('splitResizer').style.display = 'none';
+    document.getElementById('splitView').classList.remove('open');
+    document.getElementById('splitView').style.gridTemplateColumns = '';
+    document.getElementById('detailFrame').src = 'about:blank';
+    document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
+    document.querySelectorAll('.mobile-card.active-card').forEach(c => c.classList.remove('active-card'));
+  }
+
+  // ── リサイザードラッグ ──
+  (function() {
+    const resizer = document.getElementById('splitResizer');
+    const splitView = document.getElementById('splitView');
+    let isDragging = false;
+
+    resizer.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      isDragging = true;
+      resizer.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      // iframe のポインタイベントを無効にする（ドラッグ中）
+      const frame = document.getElementById('detailFrame');
+      if (frame) frame.style.pointerEvents = 'none';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      const rect = splitView.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const totalWidth = rect.width;
+      const leftWidth = Math.max(300, Math.min(x, totalWidth - 300));
+      const rightWidth = totalWidth - leftWidth - 6;
+      splitView.style.gridTemplateColumns = `${leftWidth}px 6px ${rightWidth}px`;
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      const frame = document.getElementById('detailFrame');
+      if (frame) frame.style.pointerEvents = '';
+    });
+  })();
 
   function renderEmpty(message) {
     document.getElementById('customerTableBody').innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><p>${message}</p></div></td></tr>`;

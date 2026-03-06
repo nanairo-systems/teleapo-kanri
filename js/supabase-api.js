@@ -48,6 +48,10 @@ function rowToCallRecord(row) {
     duration:   String(row.duration || ''),
     operator:   String(row.operator || ''),
     memo:       String(row.memo || ''),
+    question:   String(row.question || ''),
+    answer:     String(row.answer || ''),
+    answeredBy: String(row.answered_by || ''),
+    answeredAt: row.answered_at || '',
   };
 }
 
@@ -247,6 +251,7 @@ async function apiAddCallRecord(payload) {
     duration:    payload.duration || '',
     operator:    payload.operator || '',
     memo:        payload.memo     || '',
+    question:    payload.question || '',
   });
   if (error) throw new Error(error.message || JSON.stringify(error));
 
@@ -269,6 +274,10 @@ async function apiUpdateCallRecord(callId, payload) {
   if (payload.result   !== undefined) updates.result    = payload.result;
   if (payload.duration !== undefined) updates.duration  = payload.duration;
   if (payload.memo     !== undefined) updates.memo      = payload.memo;
+  if (payload.question   !== undefined) updates.question    = payload.question;
+  if (payload.answer     !== undefined) updates.answer      = payload.answer;
+  if (payload.answeredBy !== undefined) updates.answered_by = payload.answeredBy;
+  if (payload.answeredAt !== undefined) updates.answered_at = payload.answeredAt;
   const { error } = await _sb.from('call_history').update(updates).eq('id', callId);
   if (error) throw new Error(error.message);
   return { success: true };

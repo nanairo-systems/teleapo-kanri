@@ -17,6 +17,7 @@
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" id="navCustomers">📋 顧客一覧</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
+      <li><a href="questions.html">❓ 質問・回答</a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -37,7 +38,7 @@
 
   <div class="page-header">
     <div style="display:flex;align-items:center;gap:12px;">
-      <button class="btn btn-outline btn-sm" onclick="goBackToList()">← 戻る</button>
+      <button class="btn btn-outline btn-sm" onclick="goBackToList()" id="backBtn">← 戻る</button>
       <h1 id="pageTitle">顧客詳細</h1>
     </div>
   </div>
@@ -94,6 +95,11 @@
           <div class="form-group">
             <label>メモ</label>
             <textarea id="callMemo" placeholder="通話内容や次回アクションなどを記録..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>❓ お客様からの質問</label>
+            <textarea id="callQuestion" placeholder="お客様から受けた質問を記録..."></textarea>
           </div>
 
           <input type="hidden" id="callDuration">
@@ -212,6 +218,10 @@
         <label>メモ</label>
         <textarea id="editCallMemo"></textarea>
       </div>
+      <div class="form-group">
+        <label>❓ お客様からの質問</label>
+        <textarea id="editCallQuestion"></textarea>
+      </div>
       <input type="hidden" id="editingCallId">
     </div>
     <div class="modal-footer">
@@ -224,6 +234,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-api.js"></script>
 <script>
+  // ── embed モード（iframe内表示）──
+  const isEmbed = new URLSearchParams(location.search).has('embed');
+  if (isEmbed) {
+    document.body.classList.add('embedded');
+    const nav = document.querySelector('.navbar');
+    if (nav) nav.style.display = 'none';
+    const bc = document.querySelector('.breadcrumb');
+    if (bc) bc.style.display = 'none';
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) backBtn.style.display = 'none';
+  }
+
   // ── 認証チェック ──
   (function() {
     const a = JSON.parse(localStorage.getItem('authSession') || 'null');
@@ -494,6 +516,7 @@
           </div>
         </div>
         <div class="timeline-body">${esc(r.memo || 'メモなし')}</div>
+        ${r.question ? `<div class="timeline-question"><span class="timeline-question-label">❓ お客様からの質問:</span> ${esc(r.question)}</div>` : ''}
         <div class="timeline-meta">対応者: ${esc(r.operator || '-')} ／ 通話時間: ${r.duration || '-'}</div>
       </div>`;
     }).join('')}</div>`;
@@ -511,6 +534,7 @@
     document.getElementById('editCallDate').value = dt.toISOString().slice(0, 16);
     document.getElementById('editCallDuration').value = call.duration || '';
     document.getElementById('editCallMemo').value = call.memo || '';
+    document.getElementById('editCallQuestion').value = call.question || '';
     editingCallStatus = call.result || '';
     renderEditCallStatusButtons();
     document.getElementById('editCallModal').classList.add('show');
@@ -539,6 +563,7 @@
         result:   editingCallStatus,
         duration: document.getElementById('editCallDuration').value.trim(),
         memo:     document.getElementById('editCallMemo').value.trim(),
+        question: document.getElementById('editCallQuestion').value.trim(),
       });
       showToast('通話記録を更新しました', 'success');
       closeEditCallModal();
@@ -610,10 +635,12 @@
         duration:   document.getElementById('callDuration').value || fmtTimer(timerSeconds),
         operator:   auth.name,
         memo:       document.getElementById('callMemo').value.trim(),
+        question:   document.getElementById('callQuestion').value.trim(),
         tags:       [...selectedTags].join(','),
       });
       showToast('架電結果を登録しました', 'success');
       document.getElementById('callMemo').value = '';
+      document.getElementById('callQuestion').value = '';
       selectedCallStatus = '';
       renderCallStatusButtons();
       resetTimer();

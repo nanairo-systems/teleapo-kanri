@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>質問・回答一覧 - テレアポ顧客管理</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="index.html" class="navbar-brand"><span class="icon">📞</span>テレアポ顧客管理</a>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    <ul class="navbar-nav" id="navMenu">
+      <li><a href="index.html">🏠 ホーム</a></li>
+      <li><a href="dashboard.html">📊 ダッシュボード</a></li>
+      <li><a href="questions.html" class="active">❓ 質問・回答</a></li>
+      <li><a href="import.html">📥 インポート</a></li>
+      <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
+      <li class="nav-user" id="navUserInfo"></li>
+      <li><button class="btn-logout" onclick="logout()">ログアウト</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>❓ 質問・回答一覧</h1>
+      <p>お客様からいただいた質問と回答を管理</p>
+    </div>
+    <button class="btn btn-primary" onclick="exportCSV()">📥 CSVエクスポート</button>
+  </div>
+
+  <!-- フィルター -->
+  <div class="toolbar" style="margin-bottom:20px;">
+    <div class="toolbar-row">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="質問・回答・会社名で検索..." oninput="applyFilters()">
+      </div>
+      <select class="filter-select" id="businessFilter" onchange="applyFilters()">
+        <option value="">すべての業務</option>
+      </select>
+      <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+        <option value="">すべてのステータス</option>
+        <option value="unanswered">未回答のみ</option>
+        <option value="answered">回答済みのみ</option>
+      </select>
+      <select class="filter-select" id="sortSelect" onchange="applyFilters()">
+        <option value="date_desc">日付（新しい順）</option>
+        <option value="date_asc">日付（古い順）</option>
+        <option value="company_asc">会社名（昇順）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 統計 -->
+  <div class="stats-row" style="margin-bottom:20px;">
+    <div class="stat-card total"><div class="stat-value" id="statTotal">-</div><div class="stat-label">質問総数</div></div>
+    <div class="stat-card not-called"><div class="stat-value" id="statUnanswered">-</div><div class="stat-label">未回答</div></div>
+    <div class="stat-card called"><div class="stat-value" id="statAnswered">-</div><div class="stat-label">回答済み</div></div>
+  </div>
+
+  <!-- 質問一覧 -->
+  <div id="questionsList"></div>
+</div>
+
+<!-- 回答モーダル -->
+<div class="modal-backdrop" id="answerModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>回答を入力</h2>
+      <button class="modal-close" onclick="closeAnswerModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="qa-modal-question" id="modalQuestion"></div>
+      <div class="form-group">
+        <label>回答</label>
+        <textarea id="answerInput" rows="5" placeholder="回答を入力してください..."></textarea>
+      </div>
+      <input type="hidden" id="answeringCallId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeAnswerModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAnswer()">💾 回答を保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-api.js"></script>
+<script>
+  // ── 認証チェック ──
+  (function() {
+    const a = JSON.parse(localStorage.getItem('authSession') || 'null');
+    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+  })();
+  function logout() {
+    if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
+  }
+
+  let allQuestions = [];
+  let filteredQuestions = [];
+  let customersMap = {};
+  let businessesMap = {};
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = getCurrentUser();
+    if (auth) {
+      const el = document.getElementById('navUserInfo');
+      if (el) el.textContent = `👤 ${auth.name}`;
+      if (auth.role !== 'admin') { const li = document.getElementById('navSettingsLi'); if (li) li.style.display = 'none'; }
+    }
+
+    showLoading(true);
+    try {
+      await syncSettingsFromSupabase();
+
+      // 業務一覧を取得してフィルターに設定
+      const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+      businesses.forEach(b => { businessesMap[b.id] = b; });
+      const bizSelect = document.getElementById('businessFilter');
+      businesses.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.name;
+        bizSelect.appendChild(opt);
+      });
+
+      // 全顧客データ取得
+      const custData = await apiGetCustomers();
+      (custData.customers || []).forEach(c => { customersMap[c.id] = c; });
+
+      // 全架電履歴取得（質問あり）
+      const callHistory = await apiGetAllCallHistory();
+      allQuestions = callHistory.filter(r => r.question && r.question.trim() !== '');
+
+      applyFilters();
+      updateStats();
+    } catch(e) {
+      showToast('データの読み込みに失敗しました: ' + e.message, 'error');
+    } finally { showLoading(false); }
+
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navMenu').classList.toggle('open');
+    });
+  });
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = allQuestions.length;
+    document.getElementById('statUnanswered').textContent = allQuestions.filter(q => !q.answer).length;
+    document.getElementById('statAnswered').textContent = allQuestions.filter(q => q.answer).length;
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const bizFilter = document.getElementById('businessFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const sortVal = document.getElementById('sortSelect').value;
+
+    filteredQuestions = allQuestions.filter(q => {
+      const cust = customersMap[q.customerId] || {};
+
+      if (search) {
+        const match = q.question.toLowerCase().includes(search) ||
+          (q.answer || '').toLowerCase().includes(search) ||
+          (cust.companyName || '').toLowerCase().includes(search) ||
+          (q.operator || '').toLowerCase().includes(search);
+        if (!match) return false;
+      }
+
+      if (bizFilter && cust.businessId !== bizFilter) return false;
+
+      if (statusFilter === 'unanswered' && q.answer) return false;
+      if (statusFilter === 'answered' && !q.answer) return false;
+
+      return true;
+    });
+
+    filteredQuestions.sort((a, b) => {
+      switch (sortVal) {
+        case 'date_desc': return new Date(b.callDate) - new Date(a.callDate);
+        case 'date_asc':  return new Date(a.callDate) - new Date(b.callDate);
+        case 'company_asc': {
+          const ca = customersMap[a.customerId]?.companyName || '';
+          const cb = customersMap[b.customerId]?.companyName || '';
+          return ca.localeCompare(cb, 'ja');
+        }
+        default: return 0;
+      }
+    });
+
+    renderQuestions();
+  }
+
+  function renderQuestions() {
+    const container = document.getElementById('questionsList');
+    if (filteredQuestions.length === 0) {
+      container.innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📭</div><p>質問が見つかりません</p></div></div></div>';
+      return;
+    }
+
+    container.innerHTML = filteredQuestions.map(q => {
+      const cust = customersMap[q.customerId] || {};
+      const biz = businessesMap[cust.businessId] || {};
+      const hasAnswer = q.answer && q.answer.trim();
+      const statusClass = hasAnswer ? 'qa-answered' : 'qa-unanswered';
+      const statusLabel = hasAnswer ? '回答済み' : '未回答';
+      const statusBadge = `<span class="qa-status-badge ${statusClass}">${statusLabel}</span>`;
+
+      return `<div class="card qa-card ${statusClass}" style="margin-bottom:12px;">
+        <div class="card-body">
+          <div class="qa-header">
+            <div class="qa-meta">
+              ${statusBadge}
+              <span class="qa-biz">${esc(biz.icon || '')} ${esc(biz.name || '-')}</span>
+              <span class="qa-company">${esc(cust.companyName || '不明')}</span>
+              <span class="qa-date">${formatDateTime(q.callDate)}</span>
+              <span class="qa-operator">対応: ${esc(q.operator || '-')}</span>
+            </div>
+          </div>
+          <div class="qa-question-block">
+            <div class="qa-label">❓ 質問</div>
+            <div class="qa-text">${esc(q.question)}</div>
+          </div>
+          ${hasAnswer ? `
+          <div class="qa-answer-block">
+            <div class="qa-label">💬 回答</div>
+            <div class="qa-text">${esc(q.answer)}</div>
+            <div class="qa-answer-meta">回答者: ${esc(q.answeredBy || '-')} ／ ${q.answeredAt ? formatDateTime(q.answeredAt) : ''}</div>
+          </div>` : ''}
+          <div class="qa-actions">
+            <button class="btn btn-sm ${hasAnswer ? 'btn-outline' : 'btn-primary'}" onclick="openAnswerModal('${q.id}')">
+              ${hasAnswer ? '✏️ 回答を編集' : '💬 回答する'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── 回答モーダル ──
+  function openAnswerModal(callId) {
+    const q = allQuestions.find(x => x.id === callId);
+    if (!q) return;
+    const cust = customersMap[q.customerId] || {};
+    document.getElementById('modalQuestion').innerHTML =
+      `<div class="qa-label">❓ ${esc(cust.companyName || '不明')} からの質問</div>` +
+      `<div class="qa-text">${esc(q.question)}</div>`;
+    document.getElementById('answerInput').value = q.answer || '';
+    document.getElementById('answeringCallId').value = callId;
+    document.getElementById('answerModal').classList.add('show');
+    document.getElementById('answerInput').focus();
+  }
+
+  function closeAnswerModal() {
+    document.getElementById('answerModal').classList.remove('show');
+  }
+
+  async function submitAnswer() {
+    const callId = document.getElementById('answeringCallId').value;
+    const answer = document.getElementById('answerInput').value.trim();
+    if (!answer) { showToast('回答を入力してください', 'error'); return; }
+
+    const auth = getCurrentUser();
+    showLoading(true);
+    try {
+      await apiUpdateCallRecord(callId, {
+        answer: answer,
+        answeredBy: auth?.name || '不明',
+        answeredAt: new Date().toISOString(),
+      });
+      // ローカルデータ更新
+      const q = allQuestions.find(x => x.id === callId);
+      if (q) {
+        q.answer = answer;
+        q.answeredBy = auth?.name || '不明';
+        q.answeredAt = new Date().toISOString();
+      }
+      updateStats();
+      applyFilters();
+      closeAnswerModal();
+      showToast('回答を保存しました', 'success');
+    } catch(e) { showToast('保存に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  // ── CSVエクスポート ──
+  function exportCSV() {
+    if (filteredQuestions.length === 0) {
+      showToast('エクスポートするデータがありません', 'error');
+      return;
+    }
+
+    const headers = ['業務名', '会社名', '担当者', '電話番号', '架電日時', '対応者', '電話ステータス', '質問', '回答', '回答者', '回答日時'];
+    const rows = filteredQuestions.map(q => {
+      const cust = customersMap[q.customerId] || {};
+      const biz = businessesMap[cust.businessId] || {};
+      return [
+        biz.name || '-',
+        cust.companyName || '-',
+        cust.contactName || '-',
+        cust.phone || '-',
+        formatDateTime(q.callDate),
+        q.operator || '-',
+        q.result || '-',
+        q.question || '',
+        q.answer || '',
+        q.answeredBy || '',
+        q.answeredAt ? formatDateTime(q.answeredAt) : '',
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `質問回答一覧_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSVをエクスポートしました', 'success');
+  }
+
+  // ── ユーティリティ ──
+  function formatDate(d) { if (!d) return '-'; const dt = new Date(d); if (isNaN(dt)) return d; return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
+  function formatDateTime(d) { if (!d) return '-'; const dt = new Date(d); if (isNaN(dt)) return d; return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; }
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
+    c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+  }
+  document.getElementById('answerModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAnswerModal(); });
+</script>
+
+</body>
+</html>
