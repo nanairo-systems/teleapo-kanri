@@ -2,8 +2,8 @@
 // テレアポ顧客管理システム - Supabase API ラッパー v2
 // ============================================================
 
-const SUPABASE_URL      = 'https://ruyiqlgqzjotrcxxlprt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_uBtc7mr7El_WnoTMe3GkEQ_nzqfSZd9';
+const SUPABASE_URL      = 'https://pddhilnnedbmiutitcox.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkZGhpbG5uZWRibWl1dGl0Y294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzA1OTgsImV4cCI6MjA4Nzg0NjU5OH0.44zIPFNjkZLGk51EVz9kfaqbivh-2eM7ahga2SorOeg';
 
 let _sb;
 try {
@@ -60,7 +60,7 @@ function rowToCallRecord(row) {
 // ════════════════════════════════════════
 async function apiPing() {
   _ensureClient();
-  const { error } = await _sb.from('app_settings').select('key').limit(1);
+  const { error } = await _sb.from('tel_settings').select('key').limit(1);
   if (error) throw new Error(error.message);
   return { status: 'ok', success: true };
 }
@@ -70,7 +70,7 @@ async function apiPing() {
 // ════════════════════════════════════════
 async function apiGetCustomers(businessId, includeArchived) {
   _ensureClient();
-  let query = _sb.from('customers').select('*').order('updated_at', { ascending: false });
+  let query = _sb.from('tel_customers').select('*').order('updated_at', { ascending: false });
   if (businessId) query = query.eq('business_id', businessId);
   if (!includeArchived) query = query.eq('archived', false);
   const { data, error } = await query;
@@ -80,7 +80,7 @@ async function apiGetCustomers(businessId, includeArchived) {
 
 async function apiGetArchivedCustomers(businessId) {
   _ensureClient();
-  let query = _sb.from('customers').select('*').eq('archived', true).order('archived_at', { ascending: false });
+  let query = _sb.from('tel_customers').select('*').eq('archived', true).order('archived_at', { ascending: false });
   if (businessId) query = query.eq('business_id', businessId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -90,8 +90,8 @@ async function apiGetArchivedCustomers(businessId) {
 async function apiGetCustomer(id) {
   _ensureClient();
   const [{ data: cData, error: cErr }, { data: hData }] = await Promise.all([
-    _sb.from('customers').select('*').eq('id', id).single(),
-    _sb.from('call_history').select('*').eq('customer_id', id).order('call_date', { ascending: false })
+    _sb.from('tel_customers').select('*').eq('id', id).single(),
+    _sb.from('tel_call_history').select('*').eq('customer_id', id).order('call_date', { ascending: false })
   ]);
   if (cErr) throw new Error(cErr.message);
   return {
@@ -102,7 +102,7 @@ async function apiGetCustomer(id) {
 
 async function apiAddCustomer(payload) {
   _ensureClient();
-  const { error } = await _sb.from('customers').insert({
+  const { error } = await _sb.from('tel_customers').insert({
     business_id:  payload.businessId  || '',
     company_name: payload.companyName || '',
     contact_name: payload.contactName || '',
@@ -130,21 +130,21 @@ async function apiUpdateCustomer(payload) {
   if (payload.address     !== undefined) updates.address      = payload.address;
   if (payload.tags        !== undefined) updates.tags         = payload.tags;
   if (payload.notes       !== undefined) updates.notes        = payload.notes;
-  const { error } = await _sb.from('customers').update(updates).eq('id', payload.id);
+  const { error } = await _sb.from('tel_customers').update(updates).eq('id', payload.id);
   if (error) throw new Error(error.message);
   return { success: true };
 }
 
 async function apiDeleteCustomer(id) {
   _ensureClient();
-  const { error } = await _sb.from('customers').delete().eq('id', id);
+  const { error } = await _sb.from('tel_customers').delete().eq('id', id);
   if (error) throw new Error(error.message);
   return { success: true };
 }
 
 async function apiUpdateCustomerTags(customerId, tags) {
   _ensureClient();
-  const { error } = await _sb.from('customers').update({ tags }).eq('id', customerId);
+  const { error } = await _sb.from('tel_customers').update({ tags }).eq('id', customerId);
   if (error) throw new Error(error.message);
   return { success: true };
 }
@@ -154,7 +154,7 @@ async function apiUpdateCustomerTags(customerId, tags) {
 // ════════════════════════════════════════
 async function apiArchiveCustomer(id) {
   _ensureClient();
-  const { error } = await _sb.from('customers').update({
+  const { error } = await _sb.from('tel_customers').update({
     archived: true,
     archived_at: new Date().toISOString()
   }).eq('id', id);
@@ -164,7 +164,7 @@ async function apiArchiveCustomer(id) {
 
 async function apiRestoreCustomer(id) {
   _ensureClient();
-  const { error } = await _sb.from('customers').update({
+  const { error } = await _sb.from('tel_customers').update({
     archived: false,
     archived_at: null
   }).eq('id', id);
@@ -174,7 +174,7 @@ async function apiRestoreCustomer(id) {
 
 async function apiArchiveByBusiness(businessId) {
   _ensureClient();
-  const { error } = await _sb.from('customers')
+  const { error } = await _sb.from('tel_customers')
     .update({ archived: true, archived_at: new Date().toISOString() })
     .eq('business_id', businessId)
     .eq('archived', false);
@@ -189,7 +189,7 @@ async function apiCheckDuplicates(companyName, phone, businessId) {
   _ensureClient();
   const results = { sameBusinessDups: [], otherBusinessDups: [] };
 
-  let query = _sb.from('customers').select('id,business_id,company_name,phone,contact_name,tags,call_count,last_call_date,archived')
+  let query = _sb.from('tel_customers').select('id,business_id,company_name,phone,contact_name,tags,call_count,last_call_date,archived')
     .eq('archived', false);
 
   const { data, error } = await query;
@@ -226,7 +226,7 @@ async function apiGetCrossBusinessDuplicates(companyName, phone, excludeId) {
   const normalPhone = (phone || '').replace(/[-\s]/g, '');
   if (!companyName && !normalPhone) return dups;
 
-  const { data } = await _sb.from('customers').select('id,business_id,company_name,phone,contact_name,call_count,last_call_date,tags')
+  const { data } = await _sb.from('tel_customers').select('id,business_id,company_name,phone,contact_name,call_count,last_call_date,tags')
     .eq('archived', false).neq('id', excludeId);
   if (!data) return dups;
 
@@ -244,7 +244,7 @@ async function apiGetCrossBusinessDuplicates(companyName, phone, excludeId) {
 // ════════════════════════════════════════
 async function apiAddCallRecord(payload) {
   _ensureClient();
-  const { error } = await _sb.from('call_history').insert({
+  const { error } = await _sb.from('tel_call_history').insert({
     customer_id: payload.customerId,
     call_date:   payload.callDate || new Date().toISOString(),
     result:      payload.result   || '',
@@ -255,8 +255,8 @@ async function apiAddCallRecord(payload) {
   });
   if (error) throw new Error(error.message || JSON.stringify(error));
 
-  const { data: cur } = await _sb.from('customers').select('call_count').eq('id', payload.customerId).single();
-  await _sb.from('customers').update({
+  const { data: cur } = await _sb.from('tel_customers').select('call_count').eq('id', payload.customerId).single();
+  await _sb.from('tel_customers').update({
     call_count:     ((cur?.call_count) || 0) + 1,
     last_call_date: payload.callDate || new Date().toISOString(),
   }).eq('id', payload.customerId);
@@ -278,17 +278,17 @@ async function apiUpdateCallRecord(callId, payload) {
   if (payload.answer     !== undefined) updates.answer      = payload.answer;
   if (payload.answeredBy !== undefined) updates.answered_by = payload.answeredBy;
   if (payload.answeredAt !== undefined) updates.answered_at = payload.answeredAt;
-  const { error } = await _sb.from('call_history').update(updates).eq('id', callId);
+  const { error } = await _sb.from('tel_call_history').update(updates).eq('id', callId);
   if (error) throw new Error(error.message);
   return { success: true };
 }
 
 async function apiDeleteCallRecord(callId, customerId) {
   _ensureClient();
-  const { error } = await _sb.from('call_history').delete().eq('id', callId);
+  const { error } = await _sb.from('tel_call_history').delete().eq('id', callId);
   if (error) throw new Error(error.message);
-  const { data: cur } = await _sb.from('customers').select('call_count').eq('id', customerId).single();
-  await _sb.from('customers').update({
+  const { data: cur } = await _sb.from('tel_customers').select('call_count').eq('id', customerId).single();
+  await _sb.from('tel_customers').update({
     call_count: Math.max(0, ((cur?.call_count) || 0) - 1)
   }).eq('id', customerId);
   return { success: true };
@@ -296,7 +296,7 @@ async function apiDeleteCallRecord(callId, customerId) {
 
 async function apiGetAllCallHistory(filters) {
   _ensureClient();
-  let query = _sb.from('call_history').select('*').order('call_date', { ascending: false });
+  let query = _sb.from('tel_call_history').select('*').order('call_date', { ascending: false });
   if (filters?.from) query = query.gte('call_date', filters.from);
   if (filters?.to)   query = query.lte('call_date', filters.to);
   const { data, error } = await query;
@@ -325,7 +325,7 @@ async function apiBulkImport(customers) {
       archived:     false,
     }));
   if (rows.length === 0) throw new Error('インポートデータがありません');
-  const { error } = await _sb.from('customers').insert(rows);
+  const { error } = await _sb.from('tel_customers').insert(rows);
   if (error) throw new Error(error.message);
   return { success: true, imported: rows.length };
 }
@@ -335,7 +335,7 @@ async function apiBulkImport(customers) {
 // ════════════════════════════════════════
 async function apiGetSettings() {
   _ensureClient();
-  const { data, error } = await _sb.from('app_settings').select('*');
+  const { data, error } = await _sb.from('tel_settings').select('*');
   if (error) throw new Error(error.message);
   const settings = {};
   for (const row of (data || [])) settings[row.key] = row.value;
@@ -344,7 +344,7 @@ async function apiGetSettings() {
 
 async function apiSaveSettings(key, value) {
   _ensureClient();
-  const { error } = await _sb.from('app_settings').upsert({ key, value }, { onConflict: 'key' });
+  const { error } = await _sb.from('tel_settings').upsert({ key, value }, { onConflict: 'key' });
   if (error) throw new Error(error.message);
   return { success: true };
 }
