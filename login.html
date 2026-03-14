@@ -6,6 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ログイン - テレアポ顧客管理</title>
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // 開発用：自動ログイン（外部スクリプトより先に実行）
+    localStorage.setItem('authSession', JSON.stringify({
+      userId: 'admin',
+      name: '管理者',
+      role: 'admin',
+      expiry: Date.now() + 30 * 24 * 60 * 60 * 1000
+    }));
+    location.replace('index.html');
+  </script>
 </head>
 <body class="login-page">
 
@@ -39,12 +49,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-api.js"></script>
 <script>
-  // すでにログイン済みなら index.html へ
+  // 開発用：自動ログイン
   (function() {
-    const auth = JSON.parse(localStorage.getItem('authSession') || 'null');
-    if (auth && Date.now() < auth.expiry) {
-      location.replace('index.html');
-    }
+    localStorage.setItem('authSession', JSON.stringify({
+      userId: 'admin',
+      name: '管理者',
+      role: 'admin',
+      expiry: Date.now() + 30 * 24 * 60 * 60 * 1000
+    }));
+    location.replace('index.html');
   })();
 
   // パスワードハッシュ（SHA-256）

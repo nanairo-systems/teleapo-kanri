@@ -17,7 +17,7 @@
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" id="navCustomers">📋 顧客一覧</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html">❓ 質問・回答</a></li>
+      <li><a href="questions.html">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -185,6 +185,10 @@
         </div>
         <div class="form-group"><label>住所</label><input type="text" name="address"></div>
         <div class="form-group">
+          <label>業種</label>
+          <select name="industry" id="editIndustrySelect"><option value="">-- 選択してください --</option></select>
+        </div>
+        <div class="form-group">
           <label>ステータスタグ</label>
           <div class="tag-buttons" id="editTagButtons"></div>
         </div>
@@ -276,7 +280,17 @@
 
   function getBusinessTags() {
     const tagsByBiz = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
-    return tagsByBiz[businessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
+    const raw = tagsByBiz[businessId];
+    if (!raw) return normalizeTagDefs(['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー']);
+    return normalizeTagDefs(raw);
+  }
+
+  function getTagNames() {
+    return getBusinessTags().map(t => t.name);
+  }
+
+  function getIndustryList() {
+    return JSON.parse(localStorage.getItem('industryList') || '[]');
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -353,8 +367,13 @@
     const phoneClean = phone.replace(/[-\s()]/g, '');
 
     const tags = (customer.tags || '').split(',').filter(Boolean);
+    const tagDefs = getBusinessTags();
     document.getElementById('customerTagsDisplay').innerHTML = tags.length > 0
-      ? tags.map(t => `<span class="badge badge-tag">${esc(t.trim())}</span>`).join(' ')
+      ? tags.map(t => {
+          const rank = getTagRank(t.trim(), tagDefs);
+          const rc = getRankClass(rank);
+          return `<span class="badge badge-tag ${rc}">${esc(t.trim())}</span>`;
+        }).join(' ')
       : '<span style="font-size:13px;color:var(--text-muted);">タグなし</span>';
 
     document.getElementById('customerInfo').innerHTML = `
@@ -364,6 +383,7 @@
       <div class="info-item"><span class="info-label">電話番号</span><span class="info-value"><a href="tel:${esc(phone)}">${esc(phone || '-')}</a></span></div>
       <div class="info-item"><span class="info-label">メールアドレス</span><span class="info-value">${customer.email ? `<a href="mailto:${esc(customer.email)}">${esc(customer.email)}</a>` : '-'}</span></div>
       <div class="info-item"><span class="info-label">住所</span><span class="info-value">${esc(customer.address || '-')}</span></div>
+      <div class="info-item"><span class="info-label">業種</span><span class="info-value">${esc(customer.industry || '-')}</span></div>
       <div class="info-item"><span class="info-label">架電回数</span><span class="info-value">${customer.callCount || 0}回</span></div>
       <div class="info-item"><span class="info-label">最終架電日</span><span class="info-value">${customer.lastCallDate ? formatDate(customer.lastCallDate) : '-'}</span></div>
       <div class="info-item"><span class="info-label">登録日</span><span class="info-value">${formatDate(customer.createdAt)}</span></div>
@@ -479,9 +499,11 @@
     const currentTags = customer ? (customer.tags || '').split(',').filter(Boolean).map(t => t.trim()) : [];
     selectedTags = new Set(currentTags);
 
-    document.getElementById('tagButtons').innerHTML = availableTags.map(tag => {
-      const sel = selectedTags.has(tag) ? ' selected' : '';
-      return `<button type="button" class="tag-btn${sel}" data-tag="${esc(tag)}" onclick="toggleTag(this, 'selectedTags')">${esc(tag)}</button>`;
+    document.getElementById('tagButtons').innerHTML = availableTags.map(tagDef => {
+      const sel = selectedTags.has(tagDef.name) ? ' selected' : '';
+      const rc = getRankClass(tagDef.rank);
+      const rankLabel = tagDef.rank ? `[${tagDef.rank}] ` : '';
+      return `<button type="button" class="tag-btn ${rc}${sel}" data-tag="${esc(tagDef.name)}" onclick="toggleTag(this, 'selectedTags')">${rankLabel}${esc(tagDef.name)}</button>`;
     }).join('');
   }
 
@@ -664,11 +686,22 @@
     f.email.value = customer.email || '';
     f.address.value = customer.address || '';
 
+    // 業種セレクト初期化
+    const indList = getIndustryList();
+    const indSel = document.getElementById('editIndustrySelect');
+    indSel.innerHTML = '<option value="">-- 選択してください --</option>' +
+      indList.map(ind => `<option value="${esc(ind)}"${customer.industry === ind ? ' selected' : ''}>${esc(ind)}</option>`).join('');
+    if (customer.industry && !indList.includes(customer.industry)) {
+      indSel.innerHTML += `<option value="${esc(customer.industry)}" selected>${esc(customer.industry)}</option>`;
+    }
+
     editTags = new Set((customer.tags || '').split(',').filter(Boolean).map(t => t.trim()));
     const availableTags = getBusinessTags();
-    document.getElementById('editTagButtons').innerHTML = availableTags.map(tag => {
-      const sel = editTags.has(tag) ? ' selected' : '';
-      return `<button type="button" class="tag-btn${sel}" data-tag="${esc(tag)}" onclick="toggleTag(this, 'editTags')">${esc(tag)}</button>`;
+    document.getElementById('editTagButtons').innerHTML = availableTags.map(tagDef => {
+      const sel = editTags.has(tagDef.name) ? ' selected' : '';
+      const rc = getRankClass(tagDef.rank);
+      const rankLabel = tagDef.rank ? `[${tagDef.rank}] ` : '';
+      return `<button type="button" class="tag-btn ${rc}${sel}" data-tag="${esc(tagDef.name)}" onclick="toggleTag(this, 'editTags')">${rankLabel}${esc(tagDef.name)}</button>`;
     }).join('');
 
     document.getElementById('editModal').classList.add('show');
@@ -688,6 +721,7 @@
         phone:       f.phone.value.trim(),
         email:       f.email.value.trim(),
         address:     f.address.value.trim(),
+        industry:    f.industry.value,
         tags:        [...editTags].join(','),
       });
       showToast('顧客情報を更新しました', 'success');

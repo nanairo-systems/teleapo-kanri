@@ -29,6 +29,7 @@ function rowToCustomer(row) {
     email:        String(row.email || ''),
     address:      String(row.address || ''),
     tags:         String(row.tags || ''),
+    industry:     String(row.industry || ''),
     callCount:    Number(row.call_count) || 0,
     lastCallDate: row.last_call_date || '',
     notes:        String(row.notes || ''),
@@ -111,6 +112,7 @@ async function apiAddCustomer(payload) {
     email:        payload.email       || '',
     address:      payload.address     || '',
     tags:         payload.tags        || '',
+    industry:     payload.industry    || '',
     call_count:   0,
     notes:        payload.notes       || '',
     archived:     false,
@@ -129,6 +131,7 @@ async function apiUpdateCustomer(payload) {
   if (payload.email       !== undefined) updates.email        = payload.email;
   if (payload.address     !== undefined) updates.address      = payload.address;
   if (payload.tags        !== undefined) updates.tags         = payload.tags;
+  if (payload.industry    !== undefined) updates.industry     = payload.industry;
   if (payload.notes       !== undefined) updates.notes        = payload.notes;
   const { error } = await _sb.from('tel_customers').update(updates).eq('id', payload.id);
   if (error) throw new Error(error.message);
@@ -320,6 +323,7 @@ async function apiBulkImport(customers) {
       email:        c.email       || '',
       address:      c.address     || '',
       tags:         c.tags        || '',
+      industry:     c.industry    || '',
       notes:        c.notes       || '',
       call_count:   0,
       archived:     false,
@@ -355,7 +359,9 @@ async function syncSettingsFromSupabase() {
     if (settings.businesses)             localStorage.setItem('businesses',             JSON.stringify(settings.businesses));
     if (settings.operators)              localStorage.setItem('operators',              JSON.stringify(settings.operators));
     if (settings.customerTagsByBusiness) localStorage.setItem('customerTagsByBusiness', JSON.stringify(settings.customerTagsByBusiness));
+    if (settings.industryList)           localStorage.setItem('industryList',           JSON.stringify(settings.industryList));
     if (settings.users)                  localStorage.setItem('users',                  JSON.stringify(settings.users));
+    if (settings.standaloneQuestions)    localStorage.setItem('standaloneQuestions',    JSON.stringify(settings.standaloneQuestions));
   } catch(e) { console.warn('Supabase設定同期エラー:', e.message); }
 }
 
@@ -401,3 +407,122 @@ async function apiGetDashboardData(dateFrom, dateTo) {
 
   return { customers, calls, operators, businesses };
 }
+
+// ════════════════════════════════════════
+// タグランク ヘルパー
+// ════════════════════════════════════════
+function normalizeTagDefs(tagDefs) {
+  if (!Array.isArray(tagDefs)) return [];
+  return tagDefs.map(t => typeof t === 'string' ? { name: t, rank: '' } : t);
+}
+
+function getTagRank(tagName, tagDefs) {
+  const normalized = normalizeTagDefs(tagDefs);
+  const def = normalized.find(t => t.name === tagName);
+  return def?.rank || '';
+}
+
+function getRankClass(rank) {
+  if (rank === 'A') return 'rank-a';
+  if (rank === 'B') return 'rank-b';
+  if (rank === 'C') return 'rank-c';
+  return '';
+}
+
+// ════════════════════════════════════════
+// スタンドアロン質問操作（Supabase専用テーブル）
+// ════════════════════════════════════════
+
+// DB行 → フロント用オブジェクト変換
+function _rowToStandaloneQ(row) {
+  return {
+    id:          row.id,
+    businessId:  row.business_id  || '',
+    question:    row.question     || '',
+    answer:      row.answer       || '',
+    answeredBy:  row.answered_by  || '',
+    answeredAt:  row.answered_at  || '',
+    createdAt:   row.created_at   || '',
+    createdBy:   row.created_by   || '',
+    type:        'standalone',
+  };
+}
+
+async function apiGetStandaloneQuestions() {
+  _ensureClient();
+  const { data, error } = await _sb
+    .from('tel_standalone_questions')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  const questions = (data || []).map(_rowToStandaloneQ);
+  localStorage.setItem('standaloneQuestions', JSON.stringify(questions));
+  return questions;
+}
+
+async function apiAddStandaloneQuestion(payload) {
+  _ensureClient();
+  const { data, error } = await _sb
+    .from('tel_standalone_questions')
+    .insert({
+      business_id: payload.businessId || '',
+      question:    payload.question   || '',
+      answer:      '',
+      answered_by: '',
+      answered_at: null,
+      created_at:  new Date().toISOString(),
+      created_by:  payload.createdBy  || '',
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return { success: true, id: data.id };
+}
+
+async function apiUpdateStandaloneQuestion(id, updates) {
+  _ensureClient();
+  const dbUpdates = {};
+  if (updates.question    !== undefined) dbUpdates.question    = updates.question;
+  if (updates.businessId  !== undefined) dbUpdates.business_id = updates.businessId;
+  if (updates.answer      !== undefined) dbUpdates.answer      = updates.answer;
+  if (updates.answeredBy  !== undefined) dbUpdates.answered_by = updates.answeredBy;
+  if (updates.answeredAt  !== undefined) dbUpdates.answered_at = updates.answeredAt || null;
+  const { error } = await _sb
+    .from('tel_standalone_questions')
+    .update(dbUpdates)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+async function apiDeleteStandaloneQuestion(id) {
+  _ensureClient();
+  const { error } = await _sb
+    .from('tel_standalone_questions')
+    .delete()
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+// ════════════════════════════════════════
+// 未回答質問バッジ
+// ════════════════════════════════════════
+function refreshQuestionBadge() {
+  const count = parseInt(localStorage.getItem('unansweredQuestionCount') || '0', 10);
+  document.querySelectorAll('.nav-q-badge').forEach(el => {
+    if (count > 0) {
+      el.textContent = count;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+function saveUnansweredCount(count) {
+  localStorage.setItem('unansweredQuestionCount', String(count));
+  refreshQuestionBadge();
+}
+
+document.addEventListener('DOMContentLoaded', refreshQuestionBadge);

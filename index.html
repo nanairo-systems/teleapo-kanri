@@ -18,7 +18,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html" class="active">🏠 ホーム</a></li>
       <li id="navDashboardLi"><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html">❓ 質問・回答</a></li>
+      <li><a href="questions.html">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -102,10 +102,17 @@
     }
   ];
 
-  // ── 認証チェック ──
+  // ── 認証チェック（開発用：セッションが無ければ自動作成） ──
   (function() {
     const a = JSON.parse(localStorage.getItem('authSession') || 'null');
-    if (!a || Date.now() > a.expiry) { localStorage.removeItem('authSession'); location.replace('login.html'); }
+    if (!a || Date.now() > a.expiry) {
+      localStorage.setItem('authSession', JSON.stringify({
+        userId: 'admin',
+        name: '管理者',
+        role: 'admin',
+        expiry: Date.now() + 30 * 24 * 60 * 60 * 1000
+      }));
+    }
   })();
 
   function logout() {

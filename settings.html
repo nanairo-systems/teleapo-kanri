@@ -16,7 +16,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html">❓ 質問・回答</a></li>
+      <li><a href="questions.html">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li><a href="settings.html" class="active">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -101,6 +101,20 @@
     </div>
   </div>
 
+  <!-- 業種マスター -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🏭 業種マスター</h2>
+      <p>顧客に設定できる業種を管理します（顧客登録・編集画面でドロップダウン選択）</p>
+    </div>
+    <div class="card-body">
+      <div id="industryList"></div>
+      <div id="industryPlaceholder" style="text-align:center;padding:12px;color:var(--gray-400);display:none;">
+        業種が登録されていません
+      </div>
+    </div>
+  </div>
+
   <!-- ユーザー管理（管理者のみ） -->
   <div class="card">
     <div class="card-header">
@@ -181,9 +195,16 @@
 
   const DEFAULT_TAGS = ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
   const MAX_TAGS = 10;
+  const DEFAULT_INDUSTRIES = [
+    'とび・土工工事業', '建築工事業', '土木工事業', '塗装工事業', '防水工事業',
+    '電気工事業', '管工事業', '鉄骨工事業', '解体工事業', 'リフォーム業',
+    '足場工事業', '内装仕上工事業', '不動産業', 'その他'
+  ];
+  const MAX_INDUSTRIES = 30;
 
   let operators = [];
   let customTags = [];
+  let industries = [];
   let users = [];
 
   async function saveAppSetting(key, value) {
@@ -197,6 +218,7 @@
     loadOperators();
     loadUsers();
     loadTags();
+    loadIndustries();
     populateBizSelect();
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('navMenu').classList.toggle('open');
@@ -318,7 +340,9 @@
 
   function getTagsForBusiness(bizId) {
     const allTags = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
-    return allTags[bizId] || [...DEFAULT_TAGS];
+    const raw = allTags[bizId];
+    if (!raw) return DEFAULT_TAGS.map(t => ({ name: t, rank: '' }));
+    return normalizeTagDefs(raw);
   }
 
   function saveTags() {
@@ -334,8 +358,14 @@
     list.innerHTML = customTags.map((tag, i) => `
       <div class="tag-row">
         <span class="tag-label">タグ${i + 1}</span>
-        <div class="tag-editable">
-          <input type="text" value="${esc(tag)}" onchange="updateTag(${i}, this.value)" onblur="updateTag(${i}, this.value)">
+        <div class="tag-editable" style="display:flex;align-items:center;gap:6px;">
+          <input type="text" value="${esc(tag.name)}" onchange="updateTagName(${i}, this.value)" onblur="updateTagName(${i}, this.value)" style="flex:1;">
+          <select onchange="updateTagRank(${i}, this.value)" style="width:70px;padding:6px 4px;border-radius:var(--radius);border:1.5px solid var(--border-subtle);font-size:13px;">
+            <option value=""${tag.rank === '' ? ' selected' : ''}>-</option>
+            <option value="A"${tag.rank === 'A' ? ' selected' : ''}>A</option>
+            <option value="B"${tag.rank === 'B' ? ' selected' : ''}>B</option>
+            <option value="C"${tag.rank === 'C' ? ' selected' : ''}>C</option>
+          </select>
           <button class="tag-remove" onclick="removeTag(${i})">&times;</button>
         </div>
       </div>
@@ -349,21 +379,26 @@
     renderTagPreview();
   }
 
-  function updateTag(idx, value) {
+  function updateTagName(idx, value) {
     value = value.trim();
     if (!value) { showToast('タグ名は空にできません', 'error'); renderTags(); return; }
-    customTags[idx] = value;
+    customTags[idx].name = value;
     saveTags();
+  }
+
+  function updateTagRank(idx, rank) {
+    customTags[idx].rank = rank;
+    saveTags(); renderTags();
   }
 
   function addTag() {
     if (customTags.length >= MAX_TAGS) { showToast(`カスタムタグは${MAX_TAGS}つまでです`, 'error'); return; }
-    customTags.push('新しいタグ');
+    customTags.push({ name: '新しいタグ', rank: '' });
     saveTags(); renderTags();
   }
 
   function removeTag(idx) {
-    if (!confirm(`「${customTags[idx]}」を削除しますか？`)) return;
+    if (!confirm(`「${customTags[idx].name}」を削除しますか？`)) return;
     customTags.splice(idx, 1);
     saveTags(); renderTags();
     showToast('タグを削除しました', 'success');
@@ -375,8 +410,72 @@
     const bizLabel = biz ? `${biz.icon} ${biz.name}` : '';
     document.getElementById('tagPreview').innerHTML = `
       <div class="tag-preview-title">顧客詳細画面でのプレビュー${bizLabel ? `（${bizLabel}）` : ''}:</div>
-      ${customTags.map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}
+      ${customTags.map(t => {
+        const rc = getRankClass(t.rank);
+        const rankLabel = t.rank ? `[${t.rank}] ` : '';
+        return `<span class="tag-chip ${rc}">${rankLabel}${esc(t.name)}</span>`;
+      }).join('')}
     `;
+  }
+
+  // ════════════════════════════════════════
+  // 業種マスター
+  // ════════════════════════════════════════
+  function loadIndustries() {
+    industries = JSON.parse(localStorage.getItem('industryList') || 'null');
+    if (!industries) { industries = [...DEFAULT_INDUSTRIES]; saveIndustries(); }
+    renderIndustries();
+  }
+
+  function saveIndustries() {
+    saveAppSetting('industryList', industries);
+    renderIndustries();
+  }
+
+  function renderIndustries() {
+    const list = document.getElementById('industryList');
+    const placeholder = document.getElementById('industryPlaceholder');
+    if (industries.length === 0) {
+      list.innerHTML = '';
+      placeholder.style.display = '';
+      return;
+    }
+    placeholder.style.display = 'none';
+    list.innerHTML = industries.map((ind, i) => `
+      <div class="tag-row">
+        <span class="tag-label">${i + 1}</span>
+        <div class="tag-editable">
+          <input type="text" value="${esc(ind)}" onchange="updateIndustry(${i}, this.value)" onblur="updateIndustry(${i}, this.value)">
+          <button class="tag-remove" onclick="removeIndustry(${i})">&times;</button>
+        </div>
+      </div>
+    `).join('') +
+    (industries.length < MAX_INDUSTRIES ? `
+      <div class="tag-row">
+        <span class="tag-label"></span>
+        <button class="btn btn-outline btn-sm" onclick="addIndustry()">＋ 業種を追加（残り${MAX_INDUSTRIES - industries.length}）</button>
+      </div>
+    ` : '');
+  }
+
+  function updateIndustry(idx, value) {
+    value = value.trim();
+    if (!value) { showToast('業種名は空にできません', 'error'); renderIndustries(); return; }
+    industries[idx] = value;
+    saveIndustries();
+  }
+
+  function addIndustry() {
+    if (industries.length >= MAX_INDUSTRIES) { showToast(`業種は${MAX_INDUSTRIES}個までです`, 'error'); return; }
+    industries.push('新しい業種');
+    saveIndustries();
+  }
+
+  function removeIndustry(idx) {
+    if (!confirm(`「${industries[idx]}」を削除しますか？`)) return;
+    industries.splice(idx, 1);
+    saveIndustries();
+    showToast('業種を削除しました', 'success');
   }
 
   // ════════════════════════════════════════
@@ -491,8 +590,8 @@
       const customers = data.customers || [];
       if (customers.length === 0) { showToast('エクスポートするデータがありません', 'error'); return; }
 
-      const headers = ['ID', '業務ID', '会社名', '担当者', '部署', '電話番号', 'メール', '住所', 'タグ', '架電回数', '最終架電日', '備考', '登録日', '更新日'];
-      const rows = customers.map(c => [c.id, c.businessId, c.companyName, c.contactName, c.department, c.phone, c.email, c.address, c.tags, c.callCount, c.lastCallDate, c.notes, c.createdAt, c.updatedAt]);
+      const headers = ['ID', '業務ID', '会社名', '担当者', '部署', '電話番号', 'メール', '住所', '業種', 'タグ', '架電回数', '最終架電日', '備考', '登録日', '更新日'];
+      const rows = customers.map(c => [c.id, c.businessId, c.companyName, c.contactName, c.department, c.phone, c.email, c.address, c.industry, c.tags, c.callCount, c.lastCallDate, c.notes, c.createdAt, c.updatedAt]);
       const bom = '\uFEFF';
       const csv = bom + [headers, ...rows].map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -507,7 +606,7 @@
   function clearLocalData() {
     if (!confirm('ローカルキャッシュをすべてリセットしますか？\nSupabaseのデータには影響しません。')) return;
     ['businesses','operators','callResultTags','callResultTagsByBusiness',
-     'customerTagsByBusiness','lastOperatorId','gasApiUrl'].forEach(k => localStorage.removeItem(k));
+     'customerTagsByBusiness','industryList','lastOperatorId','gasApiUrl'].forEach(k => localStorage.removeItem(k));
     setStatus('unknown', '⏳ 未テスト');
     operators = []; customTags = [...DEFAULT_TAGS]; selectedTagBizId = '';
     renderOperators(); populateBizSelect(); populateTagBizSelect();

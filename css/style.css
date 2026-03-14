@@ -154,6 +154,29 @@ h1, h2, h3, h4 {
   background: rgba(255,255,255,0.15);
 }
 
+/* 質問未回答バッジ */
+.nav-q-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 4px;
+  margin-left: 5px;
+  vertical-align: middle;
+  animation: badge-pop 0.3s ease;
+}
+@keyframes badge-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
 .nav-user {
   font-size: 12px;
   color: rgba(255,255,255,0.4);
@@ -450,6 +473,34 @@ tbody tr:last-child td { border-bottom: none; }
   letter-spacing: 0.02em;
 }
 .badge-tag { background: var(--accent-soft); color: var(--navy-700); border: 1px solid #a5b4fc; }
+
+/* ── Tag Rank Colors (A/B/C) ── */
+.tag-badge.rank-a, .badge-tag.rank-a { background: #dcfce7; color: #166534; border-color: #16a34a; }
+.tag-badge.rank-b, .badge-tag.rank-b { background: #dbeafe; color: #1e40af; border-color: #2563eb; }
+.tag-badge.rank-c, .badge-tag.rank-c { background: #f1f5f9; color: #475569; border-color: #94a3b8; }
+.tag-btn.rank-a { border-color: #bbf7d0; }
+.tag-btn.rank-a.selected { background: #dcfce7; color: #166534; border-color: #16a34a; }
+.tag-btn.rank-b { border-color: #bfdbfe; }
+.tag-btn.rank-b.selected { background: #dbeafe; color: #1e40af; border-color: #2563eb; }
+.tag-btn.rank-c { border-color: #e2e8f0; }
+.tag-btn.rank-c.selected { background: #f1f5f9; color: #475569; border-color: #94a3b8; }
+.filter-tag-btn.rank-a { border-color: #bbf7d0; }
+.filter-tag-btn.rank-a.active { background: #dcfce7; color: #166534; border-color: #16a34a; }
+.filter-tag-btn.rank-b { border-color: #bfdbfe; }
+.filter-tag-btn.rank-b.active { background: #dbeafe; color: #1e40af; border-color: #2563eb; }
+.filter-tag-btn.rank-c { border-color: #e2e8f0; }
+.filter-tag-btn.rank-c.active { background: #f1f5f9; color: #475569; border-color: #94a3b8; }
+.rank-filter-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: var(--radius-full);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.rank-filter-btn:hover { border-color: var(--slate-400); }
+.rank-filter-btn.active-a { background: #dcfce7; color: #166534; border-color: #16a34a; }
+.rank-filter-btn.active-b { background: #dbeafe; color: #1e40af; border-color: #2563eb; }
+.rank-filter-btn.active-c { background: #f1f5f9; color: #475569; border-color: #94a3b8; }
 .badge-legacy { background: var(--slate-200); color: var(--text-secondary); }
 .badge-call-status { background: var(--accent-soft); color: var(--navy-700); border: 1px solid #a5b4fc; }
 

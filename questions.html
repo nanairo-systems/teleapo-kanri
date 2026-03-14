@@ -6,6 +6,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>質問・回答一覧 - テレアポ顧客管理</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── 業務バッジ ── */
+    .biz-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1.5px solid;
+      white-space: nowrap;
+    }
+    /* ── 質問タイプバッジ ── */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e8f4ff;
+      color: #1a6fb5;
+      border: 1px solid #b3d4f5;
+    }
+    .type-badge.from-call {
+      background: #f0f0f0;
+      color: #555;
+      border-color: #ccc;
+    }
+    /* ── QAカード ── */
+    .qa-card { border-radius: 10px; }
+    .qa-card.qa-unanswered { border-left: 4px solid #f59e0b; }
+    .qa-card.qa-answered   { border-left: 4px solid #10b981; }
+    .qa-header { margin-bottom: 12px; }
+    .qa-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .qa-company { font-weight: 700; font-size: 14px; color: #1a202c; }
+    .qa-date    { color: #888; font-size: 12px; }
+    .qa-operator { color: #555; font-size: 12px; }
+    .qa-status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .qa-unanswered .qa-status-badge { background: #fef3c7; color: #92400e; }
+    .qa-answered   .qa-status-badge { background: #d1fae5; color: #065f46; }
+    .qa-question-block {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .qa-answer-block {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .qa-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .qa-text { font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
+    .qa-answer-meta { font-size: 11px; color: #888; margin-top: 6px; }
+    .qa-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    /* ── 新規質問モーダル ── */
+    .modal { max-width: 560px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+    .form-group select, .form-group textarea, .form-group input[type="text"] {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 14px; background: #fff; box-sizing: border-box;
+    }
+    .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #3b82f6; }
+    .required { color: #ef4444; }
+
+    /* ── 業務カテゴリヘッダー ── */
+    .biz-section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin: 20px 0 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+    }
+    .page-header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn-success { background: #10b981; color: #fff; border: none; }
+    .btn-success:hover { background: #059669; }
+  </style>
 </head>
 <body>
 
@@ -16,7 +122,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html" class="active">❓ 質問・回答</a></li>
+      <li><a href="questions.html" class="active">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -32,9 +138,12 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>❓ 質問・回答一覧</h1>
-      <p>お客様からいただいた質問と回答を管理</p>
+      <p>お客様からいただいた質問と独自質問を管理</p>
     </div>
-    <button class="btn btn-primary" onclick="exportCSV()">📥 CSVエクスポート</button>
+    <div class="page-header-actions">
+      <button class="btn btn-success" onclick="openNewQuestionModal()">➕ 質問を登録</button>
+      <button class="btn btn-primary" onclick="exportCSV()">📥 CSVエクスポート</button>
+    </div>
   </div>
 
   <!-- フィルター -->
@@ -52,10 +161,16 @@
         <option value="unanswered">未回答のみ</option>
         <option value="answered">回答済みのみ</option>
       </select>
+      <select class="filter-select" id="typeFilter" onchange="applyFilters()">
+        <option value="">すべての種別</option>
+        <option value="standalone">直接登録のみ</option>
+        <option value="from_call">架電記録のみ</option>
+      </select>
       <select class="filter-select" id="sortSelect" onchange="applyFilters()">
         <option value="date_desc">日付（新しい順）</option>
         <option value="date_asc">日付（古い順）</option>
         <option value="company_asc">会社名（昇順）</option>
+        <option value="biz_asc">業務名（昇順）</option>
       </select>
     </div>
   </div>
@@ -65,17 +180,18 @@
     <div class="stat-card total"><div class="stat-value" id="statTotal">-</div><div class="stat-label">質問総数</div></div>
     <div class="stat-card not-called"><div class="stat-value" id="statUnanswered">-</div><div class="stat-label">未回答</div></div>
     <div class="stat-card called"><div class="stat-value" id="statAnswered">-</div><div class="stat-label">回答済み</div></div>
+    <div class="stat-card" style="border-top:3px solid #3b82f6;"><div class="stat-value" id="statStandalone">-</div><div class="stat-label">直接登録</div></div>
   </div>
 
   <!-- 質問一覧 -->
   <div id="questionsList"></div>
 </div>
 
-<!-- 回答モーダル -->
+<!-- ── 回答モーダル ── -->
 <div class="modal-backdrop" id="answerModal">
   <div class="modal">
     <div class="modal-header">
-      <h2>回答を入力</h2>
+      <h2>💬 回答を入力</h2>
       <button class="modal-close" onclick="closeAnswerModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -85,10 +201,62 @@
         <textarea id="answerInput" rows="5" placeholder="回答を入力してください..."></textarea>
       </div>
       <input type="hidden" id="answeringCallId">
+      <input type="hidden" id="answeringType">
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeAnswerModal()">キャンセル</button>
       <button class="btn btn-primary" onclick="submitAnswer()">💾 回答を保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 新規質問登録モーダル ── -->
+<div class="modal-backdrop" id="newQuestionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>➕ 質問を登録</h2>
+      <button class="modal-close" onclick="closeNewQuestionModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>業務カテゴリ <span class="required">*</span></label>
+        <select id="newQBusinessSelect">
+          <option value="">-- 業務を選択してください --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>質問内容 <span class="required">*</span></label>
+        <textarea id="newQQuestion" rows="5" placeholder="質問を入力してください..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeNewQuestionModal()">キャンセル</button>
+      <button class="btn btn-success" onclick="submitNewQuestion()">💾 登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 質問編集モーダル ── -->
+<div class="modal-backdrop" id="editQuestionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>✏️ 質問を編集</h2>
+      <button class="modal-close" onclick="closeEditQuestionModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>業務カテゴリ <span class="required">*</span></label>
+        <select id="editQBusinessSelect"></select>
+      </div>
+      <div class="form-group">
+        <label>質問内容 <span class="required">*</span></label>
+        <textarea id="editQQuestion" rows="5"></textarea>
+      </div>
+      <input type="hidden" id="editQId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEditQuestionModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitEditQuestion()">💾 保存する</button>
     </div>
   </div>
 </div>
@@ -105,7 +273,9 @@
     if (confirm('ログアウトしますか？')) { localStorage.removeItem('authSession'); location.href = 'login.html'; }
   }
 
-  let allQuestions = [];
+  let allCallQuestions = [];       // 架電記録から取得した質問
+  let allStandaloneQuestions = []; // 直接登録した質問
+  let allQuestions = [];           // 全質問（マージ後）
   let filteredQuestions = [];
   let customersMap = {};
   let businessesMap = {};
@@ -122,27 +292,35 @@
     try {
       await syncSettingsFromSupabase();
 
-      // 業務一覧を取得してフィルターに設定
+      // 業務一覧
       const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
       businesses.forEach(b => { businessesMap[b.id] = b; });
       const bizSelect = document.getElementById('businessFilter');
+      const newQBizSel = document.getElementById('newQBusinessSelect');
+      const editQBizSel = document.getElementById('editQBusinessSelect');
       businesses.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.id;
-        opt.textContent = b.name;
-        bizSelect.appendChild(opt);
+        [bizSelect, newQBizSel, editQBizSel].forEach(sel => {
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = `${b.icon || ''} ${b.name}`;
+          sel.appendChild(opt);
+        });
       });
 
-      // 全顧客データ取得
+      // 全顧客データ
       const custData = await apiGetCustomers();
       (custData.customers || []).forEach(c => { customersMap[c.id] = c; });
 
-      // 全架電履歴取得（質問あり）
+      // 架電履歴から質問を取得
       const callHistory = await apiGetAllCallHistory();
-      allQuestions = callHistory.filter(r => r.question && r.question.trim() !== '');
+      allCallQuestions = callHistory
+        .filter(r => r.question && r.question.trim() !== '')
+        .map(r => ({ ...r, type: 'from_call' }));
 
-      applyFilters();
-      updateStats();
+      // スタンドアロン質問を取得
+      allStandaloneQuestions = await apiGetStandaloneQuestions();
+
+      mergeAndFilter();
     } catch(e) {
       showToast('データの読み込みに失敗しました: ' + e.message, 'error');
     } finally { showLoading(false); }
@@ -152,51 +330,85 @@
     });
   });
 
+  function mergeAndFilter() {
+    allQuestions = [
+      ...allCallQuestions,
+      ...allStandaloneQuestions,
+    ];
+    updateStats();
+    applyFilters();
+  }
+
   function updateStats() {
+    const unanswered = allQuestions.filter(q => !q.answer || !q.answer.trim()).length;
     document.getElementById('statTotal').textContent = allQuestions.length;
-    document.getElementById('statUnanswered').textContent = allQuestions.filter(q => !q.answer).length;
-    document.getElementById('statAnswered').textContent = allQuestions.filter(q => q.answer).length;
+    document.getElementById('statUnanswered').textContent = unanswered;
+    document.getElementById('statAnswered').textContent = allQuestions.filter(q => q.answer && q.answer.trim()).length;
+    document.getElementById('statStandalone').textContent = allStandaloneQuestions.length;
+    // バッジカウントを保存（全ページに反映）
+    saveUnansweredCount(unanswered);
   }
 
   function applyFilters() {
-    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const search    = document.getElementById('searchInput').value.toLowerCase().trim();
     const bizFilter = document.getElementById('businessFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
-    const sortVal = document.getElementById('sortSelect').value;
+    const typeFilter   = document.getElementById('typeFilter').value;
+    const sortVal   = document.getElementById('sortSelect').value;
 
     filteredQuestions = allQuestions.filter(q => {
-      const cust = customersMap[q.customerId] || {};
+      // 業務ID取得（架電質問はcustomerのbusinessId、スタンドアロンはq.businessId）
+      const bizId = q.type === 'standalone' ? q.businessId : (customersMap[q.customerId]?.businessId || '');
+
+      if (bizFilter && bizId !== bizFilter) return false;
+      if (typeFilter === 'standalone' && q.type !== 'standalone') return false;
+      if (typeFilter === 'from_call'  && q.type !== 'from_call')  return false;
+      if (statusFilter === 'unanswered' && q.answer && q.answer.trim()) return false;
+      if (statusFilter === 'answered'   && (!q.answer || !q.answer.trim())) return false;
 
       if (search) {
-        const match = q.question.toLowerCase().includes(search) ||
-          (q.answer || '').toLowerCase().includes(search) ||
+        const cust = customersMap[q.customerId] || {};
+        const biz  = businessesMap[bizId] || {};
+        const match =
+          (q.question || '').toLowerCase().includes(search) ||
+          (q.answer   || '').toLowerCase().includes(search) ||
           (cust.companyName || '').toLowerCase().includes(search) ||
-          (q.operator || '').toLowerCase().includes(search);
+          (q.operator || '').toLowerCase().includes(search) ||
+          (biz.name || '').toLowerCase().includes(search);
         if (!match) return false;
       }
-
-      if (bizFilter && cust.businessId !== bizFilter) return false;
-
-      if (statusFilter === 'unanswered' && q.answer) return false;
-      if (statusFilter === 'answered' && !q.answer) return false;
-
       return true;
     });
 
     filteredQuestions.sort((a, b) => {
+      const dateA = a.type === 'standalone' ? a.createdAt : a.callDate;
+      const dateB = b.type === 'standalone' ? b.createdAt : b.callDate;
       switch (sortVal) {
-        case 'date_desc': return new Date(b.callDate) - new Date(a.callDate);
-        case 'date_asc':  return new Date(a.callDate) - new Date(b.callDate);
+        case 'date_desc': return new Date(dateB) - new Date(dateA);
+        case 'date_asc':  return new Date(dateA) - new Date(dateB);
         case 'company_asc': {
           const ca = customersMap[a.customerId]?.companyName || '';
           const cb = customersMap[b.customerId]?.companyName || '';
           return ca.localeCompare(cb, 'ja');
+        }
+        case 'biz_asc': {
+          const bizIdA = a.type === 'standalone' ? a.businessId : (customersMap[a.customerId]?.businessId || '');
+          const bizIdB = b.type === 'standalone' ? b.businessId : (customersMap[b.customerId]?.businessId || '');
+          const na = businessesMap[bizIdA]?.name || '';
+          const nb = businessesMap[bizIdB]?.name || '';
+          return na.localeCompare(nb, 'ja');
         }
         default: return 0;
       }
     });
 
     renderQuestions();
+  }
+
+  function bizBadgeHtml(biz) {
+    if (!biz || !biz.name) return '<span style="color:#aaa;font-size:12px;">業務不明</span>';
+    const color = biz.color || '#6b7280';
+    return `<span class="biz-badge" style="background:${color}18; border-color:${color}; color:${color};">${esc(biz.icon || '')} ${esc(biz.name)}</span>`;
   }
 
   function renderQuestions() {
@@ -207,22 +419,42 @@
     }
 
     container.innerHTML = filteredQuestions.map(q => {
-      const cust = customersMap[q.customerId] || {};
-      const biz = businessesMap[cust.businessId] || {};
+      const isStandalone = q.type === 'standalone';
+      const bizId  = isStandalone ? q.businessId : (customersMap[q.customerId]?.businessId || '');
+      const biz    = businessesMap[bizId] || {};
+      const cust   = isStandalone ? null : (customersMap[q.customerId] || {});
       const hasAnswer = q.answer && q.answer.trim();
       const statusClass = hasAnswer ? 'qa-answered' : 'qa-unanswered';
       const statusLabel = hasAnswer ? '回答済み' : '未回答';
-      const statusBadge = `<span class="qa-status-badge ${statusClass}">${statusLabel}</span>`;
+      const dateStr = isStandalone ? formatDateTime(q.createdAt) : formatDateTime(q.callDate);
+
+      const typeBadge = isStandalone
+        ? `<span class="type-badge">📝 直接登録</span>`
+        : `<span class="type-badge from-call">📞 架電記録</span>`;
+
+      const companyPart = (!isStandalone && cust?.companyName)
+        ? `<span class="qa-company">${esc(cust.companyName)}</span>`
+        : '';
+
+      const operatorPart = q.operator
+        ? `<span class="qa-operator">対応: ${esc(q.operator)}</span>`
+        : (isStandalone && q.createdBy ? `<span class="qa-operator">登録者: ${esc(q.createdBy)}</span>` : '');
+
+      const editDeleteBtns = isStandalone
+        ? `<button class="btn btn-sm btn-outline" onclick="openEditQuestionModal('${q.id}')">✏️ 編集</button>
+           <button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;" onclick="deleteStandaloneQuestion('${q.id}')">🗑️ 削除</button>`
+        : '';
 
       return `<div class="card qa-card ${statusClass}" style="margin-bottom:12px;">
         <div class="card-body">
           <div class="qa-header">
             <div class="qa-meta">
-              ${statusBadge}
-              <span class="qa-biz">${esc(biz.icon || '')} ${esc(biz.name || '-')}</span>
-              <span class="qa-company">${esc(cust.companyName || '不明')}</span>
-              <span class="qa-date">${formatDateTime(q.callDate)}</span>
-              <span class="qa-operator">対応: ${esc(q.operator || '-')}</span>
+              <span class="qa-status-badge">${statusLabel}</span>
+              ${typeBadge}
+              ${bizBadgeHtml(biz)}
+              ${companyPart}
+              <span class="qa-date">${dateStr}</span>
+              ${operatorPart}
             </div>
           </div>
           <div class="qa-question-block">
@@ -236,9 +468,10 @@
             <div class="qa-answer-meta">回答者: ${esc(q.answeredBy || '-')} ／ ${q.answeredAt ? formatDateTime(q.answeredAt) : ''}</div>
           </div>` : ''}
           <div class="qa-actions">
-            <button class="btn btn-sm ${hasAnswer ? 'btn-outline' : 'btn-primary'}" onclick="openAnswerModal('${q.id}')">
+            <button class="btn btn-sm ${hasAnswer ? 'btn-outline' : 'btn-primary'}" onclick="openAnswerModal('${q.id}','${isStandalone ? 'standalone' : 'call'}')">
               ${hasAnswer ? '✏️ 回答を編集' : '💬 回答する'}
             </button>
+            ${editDeleteBtns}
           </div>
         </div>
       </div>`;
@@ -246,15 +479,24 @@
   }
 
   // ── 回答モーダル ──
-  function openAnswerModal(callId) {
-    const q = allQuestions.find(x => x.id === callId);
+  function openAnswerModal(id, type) {
+    const q = type === 'standalone'
+      ? allStandaloneQuestions.find(x => x.id === id)
+      : allCallQuestions.find(x => x.id === id);
     if (!q) return;
-    const cust = customersMap[q.customerId] || {};
+
+    const bizId = type === 'standalone' ? q.businessId : (customersMap[q.customerId]?.businessId || '');
+    const biz  = businessesMap[bizId] || {};
+    const label = type === 'standalone'
+      ? `${biz.name || ''} の質問`
+      : `${esc(customersMap[q.customerId]?.companyName || '不明')} からの質問`;
+
     document.getElementById('modalQuestion').innerHTML =
-      `<div class="qa-label">❓ ${esc(cust.companyName || '不明')} からの質問</div>` +
+      `<div class="qa-label">❓ ${label}</div>` +
       `<div class="qa-text">${esc(q.question)}</div>`;
     document.getElementById('answerInput').value = q.answer || '';
-    document.getElementById('answeringCallId').value = callId;
+    document.getElementById('answeringCallId').value = id;
+    document.getElementById('answeringType').value = type;
     document.getElementById('answerModal').classList.add('show');
     document.getElementById('answerInput').focus();
   }
@@ -264,63 +506,144 @@
   }
 
   async function submitAnswer() {
-    const callId = document.getElementById('answeringCallId').value;
+    const id     = document.getElementById('answeringCallId').value;
+    const type   = document.getElementById('answeringType').value;
     const answer = document.getElementById('answerInput').value.trim();
     if (!answer) { showToast('回答を入力してください', 'error'); return; }
 
     const auth = getCurrentUser();
     showLoading(true);
     try {
-      await apiUpdateCallRecord(callId, {
-        answer: answer,
-        answeredBy: auth?.name || '不明',
-        answeredAt: new Date().toISOString(),
-      });
-      // ローカルデータ更新
-      const q = allQuestions.find(x => x.id === callId);
-      if (q) {
-        q.answer = answer;
-        q.answeredBy = auth?.name || '不明';
-        q.answeredAt = new Date().toISOString();
+      if (type === 'standalone') {
+        await apiUpdateStandaloneQuestion(id, {
+          answer,
+          answeredBy: auth?.name || '不明',
+          answeredAt: new Date().toISOString(),
+        });
+        const q = allStandaloneQuestions.find(x => x.id === id);
+        if (q) { q.answer = answer; q.answeredBy = auth?.name || '不明'; q.answeredAt = new Date().toISOString(); }
+      } else {
+        await apiUpdateCallRecord(id, {
+          answer,
+          answeredBy: auth?.name || '不明',
+          answeredAt: new Date().toISOString(),
+        });
+        const q = allCallQuestions.find(x => x.id === id);
+        if (q) { q.answer = answer; q.answeredBy = auth?.name || '不明'; q.answeredAt = new Date().toISOString(); }
       }
-      updateStats();
-      applyFilters();
+      mergeAndFilter();
       closeAnswerModal();
       showToast('回答を保存しました', 'success');
     } catch(e) { showToast('保存に失敗しました: ' + e.message, 'error'); }
     finally { showLoading(false); }
   }
 
+  // ── 新規質問登録モーダル ──
+  function openNewQuestionModal() {
+    document.getElementById('newQBusinessSelect').value = '';
+    document.getElementById('newQQuestion').value = '';
+    document.getElementById('newQuestionModal').classList.add('show');
+    document.getElementById('newQQuestion').focus();
+  }
+
+  function closeNewQuestionModal() {
+    document.getElementById('newQuestionModal').classList.remove('show');
+  }
+
+  async function submitNewQuestion() {
+    const bizId    = document.getElementById('newQBusinessSelect').value.trim();
+    const question = document.getElementById('newQQuestion').value.trim();
+    if (!bizId)    { showToast('業務カテゴリを選択してください', 'error'); return; }
+    if (!question) { showToast('質問内容を入力してください', 'error'); return; }
+
+    const auth = getCurrentUser();
+    showLoading(true);
+    try {
+      const result = await apiAddStandaloneQuestion({
+        businessId: bizId,
+        question,
+        createdBy: auth?.name || '不明',
+      });
+      // ローカルに追加
+      allStandaloneQuestions = await apiGetStandaloneQuestions();
+      mergeAndFilter();
+      closeNewQuestionModal();
+      showToast('質問を登録しました', 'success');
+    } catch(e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  // ── 質問編集モーダル ──
+  function openEditQuestionModal(id) {
+    const q = allStandaloneQuestions.find(x => x.id === id);
+    if (!q) return;
+    document.getElementById('editQId').value = id;
+    document.getElementById('editQBusinessSelect').value = q.businessId || '';
+    document.getElementById('editQQuestion').value = q.question || '';
+    document.getElementById('editQuestionModal').classList.add('show');
+  }
+
+  function closeEditQuestionModal() {
+    document.getElementById('editQuestionModal').classList.remove('show');
+  }
+
+  async function submitEditQuestion() {
+    const id       = document.getElementById('editQId').value;
+    const bizId    = document.getElementById('editQBusinessSelect').value.trim();
+    const question = document.getElementById('editQQuestion').value.trim();
+    if (!bizId)    { showToast('業務カテゴリを選択してください', 'error'); return; }
+    if (!question) { showToast('質問内容を入力してください', 'error'); return; }
+
+    showLoading(true);
+    try {
+      await apiUpdateStandaloneQuestion(id, { businessId: bizId, question });
+      allStandaloneQuestions = await apiGetStandaloneQuestions();
+      mergeAndFilter();
+      closeEditQuestionModal();
+      showToast('質問を更新しました', 'success');
+    } catch(e) { showToast('更新に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
+  async function deleteStandaloneQuestion(id) {
+    if (!confirm('この質問を削除してよろしいですか？')) return;
+    showLoading(true);
+    try {
+      await apiDeleteStandaloneQuestion(id);
+      allStandaloneQuestions = await apiGetStandaloneQuestions();
+      mergeAndFilter();
+      showToast('質問を削除しました', 'success');
+    } catch(e) { showToast('削除に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
   // ── CSVエクスポート ──
   function exportCSV() {
-    if (filteredQuestions.length === 0) {
-      showToast('エクスポートするデータがありません', 'error');
-      return;
-    }
-
-    const headers = ['業務名', '会社名', '担当者', '電話番号', '架電日時', '対応者', '電話ステータス', '質問', '回答', '回答者', '回答日時'];
+    if (filteredQuestions.length === 0) { showToast('エクスポートするデータがありません', 'error'); return; }
+    const headers = ['種別', '業務名', '会社名', '担当者', '電話番号', '日時', '対応者/登録者', '質問', '回答', '回答者', '回答日時'];
     const rows = filteredQuestions.map(q => {
-      const cust = customersMap[q.customerId] || {};
-      const biz = businessesMap[cust.businessId] || {};
+      const isStandalone = q.type === 'standalone';
+      const bizId = isStandalone ? q.businessId : (customersMap[q.customerId]?.businessId || '');
+      const biz  = businessesMap[bizId] || {};
+      const cust = isStandalone ? {} : (customersMap[q.customerId] || {});
+      const dateStr = isStandalone ? (q.createdAt || '') : (q.callDate || '');
       return [
+        isStandalone ? '直接登録' : '架電記録',
         biz.name || '-',
         cust.companyName || '-',
         cust.contactName || '-',
         cust.phone || '-',
-        formatDateTime(q.callDate),
-        q.operator || '-',
-        q.result || '-',
+        formatDateTime(dateStr),
+        q.operator || q.createdBy || '-',
         q.question || '',
         q.answer || '',
         q.answeredBy || '',
         q.answeredAt ? formatDateTime(q.answeredAt) : '',
       ];
     });
-
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
-
     const bom = '\uFEFF';
     const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -342,7 +665,10 @@
     t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${esc(msg)}`;
     c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
   }
+
   document.getElementById('answerModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAnswerModal(); });
+  document.getElementById('newQuestionModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeNewQuestionModal(); });
+  document.getElementById('editQuestionModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeEditQuestionModal(); });
 </script>
 
 </body>

@@ -16,7 +16,7 @@
     <ul class="navbar-nav" id="navMenu">
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html">❓ 質問・回答</a></li>
+      <li><a href="questions.html">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html" class="active">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -95,6 +95,7 @@
               <tr><td><strong>メール</strong></td><td><span class="col-optional">任意</span></td><td>メールアドレス</td><td>yamada@example.com</td></tr>
               <tr><td><strong>住所</strong></td><td><span class="col-optional">任意</span></td><td>住所</td><td>東京都渋谷区1-2-3</td></tr>
               <tr><td><strong>備考</strong></td><td><span class="col-optional">任意</span></td><td>メモ・備考欄</td><td>午前中が繋がりやすい</td></tr>
+              <tr><td><strong>業種</strong></td><td><span class="col-optional">任意</span></td><td>顧客の業種</td><td>建築工事業</td></tr>
               <tr><td><strong>タグ</strong></td><td><span class="col-optional">任意</span></td><td>カンマ区切りで複数タグ指定可能</td><td>見込み高,材料あり</td></tr>
             </tbody>
           </table>
@@ -155,7 +156,7 @@
   const KNOWN_COLUMNS = {
     '会社名': 'companyName', '電話番号': 'phone', '担当者名': 'contactName',
     '部署役職': 'department', 'メール': 'email', '住所': 'address',
-    '備考': 'notes', 'タグ': 'tags'
+    '備考': 'notes', 'タグ': 'tags', '業種': 'industry'
   };
   const REQUIRED_COLS = ['会社名', '電話番号'];
 
@@ -351,6 +352,7 @@
       address:     r.address     || '',
       notes:       r.notes       || '',
       tags:        r.tags        || '',
+      industry:    r.industry    || '',
     }));
 
     showLoading(true);

@@ -17,7 +17,7 @@
       <li><a href="index.html">🏠 ホーム</a></li>
       <li><a href="#" class="active" id="navCustomers">📋 顧客一覧</a></li>
       <li><a href="dashboard.html">📊 ダッシュボード</a></li>
-      <li><a href="questions.html">❓ 質問・回答</a></li>
+      <li><a href="questions.html">❓ 質問・回答<span class="nav-q-badge"></span></a></li>
       <li><a href="import.html">📥 インポート</a></li>
       <li id="navSettingsLi"><a href="settings.html">⚙️ 設定</a></li>
       <li class="nav-user" id="navUserInfo"></li>
@@ -45,7 +45,10 @@
 
     <div class="page-header">
       <div></div>
-      <button class="btn btn-primary" onclick="openAddModal()">＋ 新規顧客登録</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="openAddQuestionModal()" style="color:#10b981;border-color:#10b981;">❓ 質問を登録</button>
+        <button class="btn btn-primary" onclick="openAddModal()">＋ 新規顧客登録</button>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -66,6 +69,10 @@
           <option value="1-3">1〜3回</option>
           <option value="4+">4回以上</option>
         </select>
+        <select class="filter-select" id="industryFilter" onchange="saveFilterState();applyFilters()">
+          <option value="">すべての業種</option>
+          <option value="__none__">業種なし</option>
+        </select>
         <select class="filter-select" id="sortSelect" onchange="saveFilterState();applyFilters()">
           <option value="updated_desc">更新日（新しい順）</option>
           <option value="updated_asc">更新日（古い順）</option>
@@ -76,7 +83,13 @@
         </select>
       </div>
       <div class="toolbar-row">
-        <div class="filter-tags" id="filterTags">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">ランク:</span>
+          <button class="rank-filter-btn" id="rankFilterA" onclick="toggleRankFilter('A')">A</button>
+          <button class="rank-filter-btn" id="rankFilterB" onclick="toggleRankFilter('B')">B</button>
+          <button class="rank-filter-btn" id="rankFilterC" onclick="toggleRankFilter('C')">C</button>
+        </div>
+        <div class="filter-tags" id="filterTags" style="flex:1;">
           <span class="filter-tags-label">🏷️ タグ絞り込み:</span>
         </div>
         <button class="btn btn-sm btn-outline" id="tagModeBtn" onclick="toggleTagMode()" style="white-space:nowrap;margin-left:auto;">OR</button>
@@ -88,7 +101,7 @@
     <div class="table-wrapper">
       <div class="table-scroll">
         <table>
-          <thead><tr><th>会社名</th><th>電話番号</th><th>タグ</th><th>架電回数</th><th>最終架電日</th><th>操作</th></tr></thead>
+          <thead><tr><th>会社名</th><th>電話番号</th><th>業種</th><th>タグ</th><th>架電回数</th><th>最終架電日</th><th>操作</th></tr></thead>
           <tbody id="customerTableBody"></tbody>
         </table>
       </div>
@@ -114,6 +127,30 @@
   </div>
 </div>
 
+<!-- 質問登録モーダル -->
+<div class="modal-backdrop" id="addQuestionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>❓ 質問を登録</h2>
+      <button class="modal-close" onclick="closeAddQuestionModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:4px;">
+        <label style="font-size:12px;color:#888;">業務カテゴリ</label>
+        <div id="aqBizBadge" style="margin-top:4px;font-weight:600;font-size:14px;"></div>
+      </div>
+      <div class="form-group">
+        <label>質問内容 <span class="required">*</span></label>
+        <textarea id="aqQuestion" rows="5" placeholder="質問を入力してください..." style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeAddQuestionModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAddQuestion()" style="background:#10b981;border-color:#10b981;">💾 登録する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 新規顧客登録モーダル -->
 <div class="modal-backdrop" id="addModal">
   <div class="modal">
@@ -133,6 +170,7 @@
           <div class="form-group"><label>メールアドレス</label><input type="email" name="email" placeholder="例：yamada@example.com"></div>
         </div>
         <div class="form-group"><label>住所</label><input type="text" name="address" placeholder="例：東京都渋谷区..."></div>
+        <div class="form-group"><label>業種</label><select name="industry" id="addIndustrySelect"><option value="">-- 選択してください --</option></select></div>
         <div class="form-group"><label>備考</label><textarea name="notes" placeholder="メモを入力..."></textarea></div>
       </form>
     </div>
@@ -165,13 +203,36 @@
   let currentBusiness = null;
   let activeTagFilters = new Set();
   let tagFilterMode = 'OR';
+  let activeRankFilters = new Set();
   let showingArchived = false;
 
   function getBusinessId() { return new URLSearchParams(window.location.search).get('businessId') || ''; }
 
   function getBusinessTags() {
     const tagsByBiz = JSON.parse(localStorage.getItem('customerTagsByBusiness') || '{}');
-    return tagsByBiz[currentBusinessId] || ['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー'];
+    const raw = tagsByBiz[currentBusinessId];
+    if (!raw) return normalizeTagDefs(['見込み高', '見込み低', 'アポ済み', '断り', '要フォロー']);
+    return normalizeTagDefs(raw);
+  }
+
+  function getTagNames() {
+    return getBusinessTags().map(t => t.name);
+  }
+
+  function getIndustryList() {
+    return JSON.parse(localStorage.getItem('industryList') || '[]');
+  }
+
+  function populateIndustryOptions() {
+    const list = getIndustryList();
+    // フィルタ用
+    const filterSel = document.getElementById('industryFilter');
+    filterSel.innerHTML = '<option value="">すべての業種</option><option value="__none__">業種なし</option>' +
+      list.map(ind => `<option value="${esc(ind)}">${esc(ind)}</option>`).join('');
+    // 新規登録用
+    const addSel = document.getElementById('addIndustrySelect');
+    if (addSel) addSel.innerHTML = '<option value="">-- 選択してください --</option>' +
+      list.map(ind => `<option value="${esc(ind)}">${esc(ind)}</option>`).join('');
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -212,6 +273,7 @@
       currentBusiness = businesses.find(b => b.id === currentBusinessId);
       if (!currentBusiness) { window.location.href = 'index.html'; return; }
 
+      populateIndustryOptions();
       renderBanner(); updateNavLinks(); renderFilterTags(); applyFilters(); updateStats(allCustomers);
     } catch(e) {
       if (!cached) {
@@ -242,13 +304,16 @@
   }
 
   function renderFilterTags() {
-    const tags = getBusinessTags();
+    const tagDefs = getBusinessTags();
     const container = document.getElementById('filterTags');
     const activeCount = activeTagFilters.size;
     container.innerHTML = '<span class="filter-tags-label">🏷️ タグ絞り込み:</span>' +
       (activeCount > 0 ? `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px;" onclick="clearTagFilters()">✕ フィルタ解除</button>` : '') +
       `<button class="filter-tag-btn no-tag${activeTagFilters.has('__none__') ? ' active' : ''}" data-tag="__none__" onclick="toggleFilterTag(this)">タグなし</button>` +
-      tags.map(t => `<button class="filter-tag-btn${activeTagFilters.has(t) ? ' active' : ''}" data-tag="${esc(t)}" onclick="toggleFilterTag(this)">${esc(t)}</button>`).join('');
+      tagDefs.map(td => {
+        const rc = getRankClass(td.rank);
+        return `<button class="filter-tag-btn ${rc}${activeTagFilters.has(td.name) ? ' active' : ''}" data-tag="${esc(td.name)}" onclick="toggleFilterTag(this)">${esc(td.name)}</button>`;
+      }).join('');
   }
 
   function clearTagFilters() {
@@ -271,6 +336,21 @@
     document.getElementById('tagModeBtn').textContent = tagFilterMode;
     saveFilterState();
     applyFilters();
+  }
+
+  function toggleRankFilter(rank) {
+    if (activeRankFilters.has(rank)) activeRankFilters.delete(rank);
+    else activeRankFilters.add(rank);
+    updateRankFilterUI();
+    saveFilterState();
+    applyFilters();
+  }
+
+  function updateRankFilterUI() {
+    ['A', 'B', 'C'].forEach(r => {
+      const btn = document.getElementById(`rankFilter${r}`);
+      btn.className = 'rank-filter-btn' + (activeRankFilters.has(r) ? ` active-${r.toLowerCase()}` : '');
+    });
   }
 
   async function toggleArchiveView() {
@@ -316,9 +396,11 @@
     const state = {
       search: document.getElementById('searchInput').value,
       callFilter: document.getElementById('callCountFilter').value,
+      industryFilter: document.getElementById('industryFilter').value,
       sort: document.getElementById('sortSelect').value,
       tags: [...activeTagFilters],
       tagMode: tagFilterMode,
+      ranks: [...activeRankFilters],
       scrollY: window.scrollY,
       page: currentPage,
     };
@@ -332,9 +414,11 @@
       const s = JSON.parse(raw);
       if (s.search) document.getElementById('searchInput').value = s.search;
       if (s.callFilter) document.getElementById('callCountFilter').value = s.callFilter;
+      if (s.industryFilter) document.getElementById('industryFilter').value = s.industryFilter;
       if (s.sort) document.getElementById('sortSelect').value = s.sort;
       if (s.tags) { activeTagFilters = new Set(s.tags); }
       if (s.tagMode) { tagFilterMode = s.tagMode; document.getElementById('tagModeBtn').textContent = tagFilterMode; }
+      if (s.ranks) { activeRankFilters = new Set(s.ranks); updateRankFilterUI(); }
       if (s.page) currentPage = s.page;
       if (s.scrollY) setTimeout(() => window.scrollTo(0, s.scrollY), 100);
     } catch(e) {}
@@ -362,6 +446,7 @@
   function applyFilters() {
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
     const callFilter = document.getElementById('callCountFilter').value;
+    const industryFilter = document.getElementById('industryFilter').value;
     const sortVal = document.getElementById('sortSelect').value;
 
     filteredCustomers = allCustomers.filter(c => {
@@ -397,7 +482,19 @@
         }
       }
 
-      return matchSearch && matchCallCount && matchTags;
+      let matchIndustry = true;
+      if (industryFilter === '__none__') matchIndustry = !c.industry;
+      else if (industryFilter) matchIndustry = c.industry === industryFilter;
+
+      let matchRank = true;
+      if (activeRankFilters.size > 0) {
+        const tagDefs = getBusinessTags();
+        const cTags = (c.tags || '').split(',').filter(Boolean).map(t => t.trim());
+        const customerRanks = new Set(cTags.map(t => getTagRank(t, tagDefs)).filter(Boolean));
+        matchRank = [...activeRankFilters].some(r => customerRanks.has(r));
+      }
+
+      return matchSearch && matchCallCount && matchTags && matchIndustry && matchRank;
     });
 
     filteredCustomers.sort((a, b) => {
@@ -424,21 +521,26 @@
     const biz = encodeURIComponent(currentBusinessId);
 
     if (filteredCustomers.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>該当する顧客が見つかりません</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><p>該当する顧客が見つかりません</p></div></td></tr>`;
       document.getElementById('paginationInfo').textContent = '';
       document.getElementById('paginationButtons').innerHTML = '';
       return;
     }
 
+    const tagDefs = getBusinessTags();
     tbody.innerHTML = pageData.map(c => {
       const tags = (c.tags || '').split(',').filter(Boolean);
       const tagsHtml = tags.length > 0
-        ? `<div class="tag-badges">${tags.map(t => `<span class="tag-badge">${esc(t.trim())}</span>`).join('')}</div>`
+        ? `<div class="tag-badges">${tags.map(t => {
+            const rc = getRankClass(getTagRank(t.trim(), tagDefs));
+            return `<span class="tag-badge ${rc}">${esc(t.trim())}</span>`;
+          }).join('')}</div>`
         : '<span style="color:var(--gray-400);font-size:12px;">-</span>';
       const rowClass = c.id === activeDetailId ? ' class="active-row"' : '';
       return `<tr${rowClass} data-id="${c.id}" onclick="return openDetail(event,'${c.id}')" style="cursor:pointer">
         <td><a class="customer-name" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}" onclick="return openDetail(event,'${c.id}')">${esc(c.companyName)}</a></td>
         <td>${esc(c.phone || '-')}</td>
+        <td><span style="font-size:12px;">${esc(c.industry || '-')}</span></td>
         <td>${tagsHtml}</td>
         <td>${c.callCount || 0}回</td>
         <td>${c.lastCallDate ? formatDate(c.lastCallDate) : '-'}</td>
@@ -460,16 +562,21 @@
       container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>該当する顧客が見つかりません</p></div>';
       return;
     }
+    const tagDefsM = getBusinessTags();
     container.innerHTML = filteredCustomers.map(c => {
       const tags = (c.tags || '').split(',').filter(Boolean);
       const tagsHtml = tags.length > 0
-        ? `<div class="mobile-card-tags">${tags.map(t => `<span class="tag-badge">${esc(t.trim())}</span>`).join('')}</div>`
+        ? `<div class="mobile-card-tags">${tags.map(t => {
+            const rc = getRankClass(getTagRank(t.trim(), tagDefsM));
+            return `<span class="tag-badge ${rc}">${esc(t.trim())}</span>`;
+          }).join('')}</div>`
         : '';
       const activeClass = c.id === activeDetailId ? ' active-card' : '';
       return `<a class="mobile-card${activeClass}" data-id="${c.id}" href="detail.html?id=${encodeURIComponent(c.id)}&businessId=${biz}">
         <div class="mobile-card-info">
           <div class="mobile-card-name">${esc(c.companyName)}</div>
           <div class="mobile-card-phone">${esc(c.phone || '-')}</div>
+          ${c.industry ? `<div style="font-size:11px;color:var(--gray-500);margin-top:2px;">🏭 ${esc(c.industry)}</div>` : ''}
           ${tagsHtml}
           <div class="mobile-card-meta">${c.callCount || 0}回架電 ${c.lastCallDate ? '・最終 ' + formatDate(c.lastCallDate) : ''}</div>
         </div>
@@ -508,6 +615,38 @@
   function openAddModal() { document.getElementById('addCustomerForm').reset(); document.getElementById('addModal').classList.add('show'); }
   function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
+  // ── 質問登録モーダル ──
+  function openAddQuestionModal() {
+    document.getElementById('aqQuestion').value = '';
+    const biz = currentBusiness || {};
+    const color = biz.color || '#6b7280';
+    document.getElementById('aqBizBadge').innerHTML =
+      `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid ${color};background:${color}18;color:${color};">${esc(biz.icon || '')} ${esc(biz.name || '')}</span>`;
+    document.getElementById('addQuestionModal').classList.add('show');
+    setTimeout(() => document.getElementById('aqQuestion').focus(), 100);
+  }
+
+  function closeAddQuestionModal() {
+    document.getElementById('addQuestionModal').classList.remove('show');
+  }
+
+  async function submitAddQuestion() {
+    const question = document.getElementById('aqQuestion').value.trim();
+    if (!question) { showToast('質問内容を入力してください', 'error'); return; }
+    const auth = getCurrentUser();
+    showLoading(true);
+    try {
+      await apiAddStandaloneQuestion({
+        businessId: currentBusinessId,
+        question,
+        createdBy: auth?.name || '不明',
+      });
+      closeAddQuestionModal();
+      showToast('質問を登録しました', 'success');
+    } catch(e) { showToast('登録に失敗しました: ' + e.message, 'error'); }
+    finally { showLoading(false); }
+  }
+
   async function doAddCustomer() {
     const form = document.getElementById('addCustomerForm');
     const companyName = (form.companyName.value || '').trim();
@@ -542,6 +681,7 @@
         phone,
         email:       (form.email.value   || '').trim(),
         address:     (form.address.value || '').trim(),
+        industry:    (form.industry.value || ''),
         notes:       notesJson,
       });
       showToast('顧客を登録しました ✅', 'success');
@@ -627,7 +767,7 @@
   })();
 
   function renderEmpty(message) {
-    document.getElementById('customerTableBody').innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><p>${message}</p></div></td></tr>`;
+    document.getElementById('customerTableBody').innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><p>${message}</p></div></td></tr>`;
     document.getElementById('paginationInfo').textContent = '';
     document.getElementById('paginationButtons').innerHTML = '';
     document.getElementById('mobileCards').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${message}</p></div>`;
@@ -644,6 +784,7 @@
     setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
   }
   document.getElementById('addModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddModal(); });
+  document.getElementById('addQuestionModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddQuestionModal(); });
 </script>
 
 </body>
